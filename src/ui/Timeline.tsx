@@ -1,0 +1,66 @@
+import { useStore } from '../state/store';
+import { computeLoopDuration } from '../core/animation/evaluate';
+
+export function Timeline() {
+  const isPlaying = useStore((s) => s.isPlaying);
+  const currentTime = useStore((s) => s.currentTime);
+  const loopDuration = useStore((s) => s.loopDuration);
+  const animations = useStore((s) => s.animations);
+  const setPlaying = useStore((s) => s.setPlaying);
+  const setCurrentTime = useStore((s) => s.setCurrentTime);
+  const setLoopDuration = useStore((s) => s.setLoopDuration);
+
+  const suggestedLoop = computeLoopDuration(animations);
+
+  return (
+    <footer className="h-12 border-t border-gray-200 bg-white flex items-center px-4 gap-4">
+      <button
+        onClick={() => setPlaying(!isPlaying)}
+        className="w-9 h-7 rounded bg-gray-900 text-white text-sm hover:bg-gray-700"
+        aria-label={isPlaying ? 'Pause' : 'Play'}
+      >
+        {isPlaying ? '❚❚' : '▶'}
+      </button>
+      <button
+        onClick={() => setCurrentTime(0)}
+        className="text-xs text-gray-500 hover:text-gray-800"
+        aria-label="Jump to start"
+      >
+        ⏮
+      </button>
+
+      <input
+        type="range"
+        min={0}
+        max={loopDuration}
+        step={0.01}
+        value={currentTime}
+        onChange={(e) => setCurrentTime(Number(e.target.value))}
+        className="flex-1"
+      />
+
+      <div className="text-xs text-gray-500 tabular-nums w-20 text-right">
+        {currentTime.toFixed(2)}s / {loopDuration.toFixed(2)}s
+      </div>
+
+      <label className="text-xs text-gray-500 flex items-center gap-1">
+        loop
+        <input
+          type="number"
+          step={0.5}
+          min={0.1}
+          value={loopDuration}
+          onChange={(e) => setLoopDuration(Number(e.target.value))}
+          className="w-16 border border-gray-300 rounded px-1 py-0.5 text-xs"
+        />
+        <button
+          onClick={() => setLoopDuration(suggestedLoop)}
+          className="text-xs text-blue-600 hover:underline"
+          title="Reset to longest animation duration"
+        >
+          auto
+        </button>
+      </label>
+    </footer>
+  );
+}
