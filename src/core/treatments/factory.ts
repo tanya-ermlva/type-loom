@@ -5,6 +5,7 @@ import { createSpacing, type SpacingParams } from './spacing';
 import { createScale, type ScaleParams } from './scale';
 import { createRotation, type RotationParams } from './rotation';
 import { createTint, type TintParams } from './tint';
+import { createCharSwap, type CharSwapParams } from './charSwap';
 
 export type TreatmentParams =
   | SilhouetteParams
@@ -12,7 +13,8 @@ export type TreatmentParams =
   | SpacingParams
   | ScaleParams
   | RotationParams
-  | TintParams;
+  | TintParams
+  | CharSwapParams;
 
 /**
  * Recreate a treatment from its type and a (possibly animated) params object.
@@ -33,7 +35,7 @@ export function recreateTreatment(
     case 'scale':      t = createScale(params as ScaleParams); break;
     case 'rotation':   t = createRotation(params as RotationParams); break;
     case 'tint':       t = createTint(params as TintParams); break;
-    case 'charSwap':
+    case 'charSwap':   t = createCharSwap(params as CharSwapParams); break;
     case 'charScramble':
     case 'charField':
       throw new Error(`Treatment type '${type}' not yet implemented`);

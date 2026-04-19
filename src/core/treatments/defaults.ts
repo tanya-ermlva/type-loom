@@ -4,6 +4,7 @@ import type { SpacingParams } from './spacing';
 import type { ScaleParams } from './scale';
 import type { RotationParams } from './rotation';
 import type { TintParams } from './tint';
+import type { CharSwapParams } from './charSwap';
 
 /**
  * Canonical default params for each treatment type.
@@ -53,4 +54,11 @@ export const DEFAULT_TINT_PARAMS: TintParams = {
   maxOpacity: 1,
   colorA: '#1a1a4d',
   colorB: '#f0bb44',
+};
+
+export const DEFAULT_CHAR_SWAP_PARAMS: CharSwapParams = {
+  pool: '*+#$%@&',
+  mode: 'random',
+  seed: 0,
+  poolIndex: 0,
 };
