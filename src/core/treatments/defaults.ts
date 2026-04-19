@@ -6,6 +6,7 @@ import type { RotationParams } from './rotation';
 import type { TintParams } from './tint';
 import type { CharSwapParams } from './charSwap';
 import type { CharScrambleParams } from './charScramble';
+import type { CharFieldParams } from './charField';
 
 /**
  * Canonical default params for each treatment type.
@@ -71,4 +72,10 @@ export const DEFAULT_CHAR_SCRAMBLE_PARAMS: CharScrambleParams = {
   flipsPerSecond: 12,
   staggerAmount: 1.5,
   staggerAxis: 'y',
+};
+
+export const DEFAULT_CHAR_FIELD_PARAMS: CharFieldParams = {
+  pool: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+  pattern: 'radial',
+  scroll: 0,
 };

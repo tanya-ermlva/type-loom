@@ -7,6 +7,7 @@ import { createRotation, type RotationParams } from './rotation';
 import { createTint, type TintParams } from './tint';
 import { createCharSwap, type CharSwapParams } from './charSwap';
 import { createCharScramble, type CharScrambleParams } from './charScramble';
+import { createCharField, type CharFieldParams } from './charField';
 
 export type TreatmentParams =
   | SilhouetteParams
@@ -16,7 +17,8 @@ export type TreatmentParams =
   | RotationParams
   | TintParams
   | CharSwapParams
-  | CharScrambleParams;
+  | CharScrambleParams
+  | CharFieldParams;
 
 /**
  * Recreate a treatment from its type and a (possibly animated) params object.
@@ -39,8 +41,7 @@ export function recreateTreatment(
     case 'tint':       t = createTint(params as TintParams); break;
     case 'charSwap':     t = createCharSwap(params as CharSwapParams); break;
     case 'charScramble': t = createCharScramble(params as CharScrambleParams); break;
-    case 'charField':
-      throw new Error(`Treatment type '${type}' not yet implemented`);
+    case 'charField':    t = createCharField(params as CharFieldParams); break;
   }
   return Object.assign(t, { id, enabled, params });
 }
