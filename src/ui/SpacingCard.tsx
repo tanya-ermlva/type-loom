@@ -53,16 +53,18 @@ export function SpacingCard({ treatment, params }: SpacingCardProps) {
           onChange={(v) => updateParams({ amplitude: v })}
           onAnimate={() => quickAnimate('amplitude', DEFAULT_SPACING_PARAMS.amplitude, params.amplitude)}
         />
-        <Slider
-          label="Frequency" value={params.frequency} min={0.1} max={5} step={0.1}
-          onChange={(v) => updateParams({ frequency: v })}
-          onAnimate={() => quickAnimate('frequency', DEFAULT_SPACING_PARAMS.frequency, params.frequency)}
-        />
+        {params.pattern === 'sine' && (
+          <Slider
+            label="Frequency" value={params.frequency} min={0.1} max={5} step={0.1}
+            onChange={(v) => updateParams({ frequency: v })}
+            onAnimate={() => quickAnimate('frequency', DEFAULT_SPACING_PARAMS.frequency, params.frequency)}
+          />
+        )}
         <MaskControls treatment={treatment} />
         <AnimationsList
           treatmentId={treatment.id}
           treatmentType="spacing"
-          numericParamKeys={['amplitude', 'frequency']}
+          numericParamKeys={params.pattern === 'sine' ? ['amplitude', 'frequency'] : ['amplitude']}
           currentParams={params as unknown as Record<string, unknown>}
           mask={treatment.mask}
         />
