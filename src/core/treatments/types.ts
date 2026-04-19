@@ -23,5 +23,10 @@ export interface Treatment {
   apply(cell: Cell, row: number, col: number, ctx: TreatmentContext): Cell;
 }
 
-export type TreatmentType = 'silhouette';
-// Future types: 'spacing' | 'drift' | 'scale' | 'rotation' | 'tint'
+export type TreatmentType =
+  | 'silhouette'
+  | 'drift'
+  | 'spacing'
+  | 'scale'
+  | 'rotation'
+  | 'tint';
