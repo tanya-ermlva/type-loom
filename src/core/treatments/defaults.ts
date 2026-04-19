@@ -31,6 +31,7 @@ export const DEFAULT_SPACING_PARAMS: SpacingParams = {
   pattern: 'tight-middle',
   amplitude: 0.5,
   frequency: 1,
+  scroll: 0,
 };
 
 export const DEFAULT_SCALE_PARAMS: ScaleParams = {

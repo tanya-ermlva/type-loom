@@ -7,6 +7,7 @@ export interface SpacingParams {
   pattern: SpacingPattern;
   amplitude: number;   // 0..1, how strong the variation is
   frequency: number;   // for 'sine' pattern only, cycles down the canvas
+  scroll: number;      // for 'sine' pattern only, radians/sec to shift the wave; +down, -up
 }
 
 /**
@@ -18,9 +19,12 @@ export interface SpacingParams {
  *
  * - tight-middle: middle rows have tighter tracking, edges are spread out
  * - tight-edges: middle rows are spread out, edges tighten
- * - sine: a sine wave of tracking variation as you go down rows
+ * - sine: a sine wave of tracking variation as you go down rows.
+ *   `scroll > 0` makes the wave travel down the canvas over time;
+ *   `scroll < 0` travels up; 0 = static spatial pattern (default).
  */
 export function createSpacing(params: SpacingParams): Treatment {
+  const scroll = params.scroll ?? 0;
   return {
     id: crypto.randomUUID(),
     type: 'spacing',
@@ -40,7 +44,8 @@ export function createSpacing(params: SpacingParams): Treatment {
           multiplier = 1 + params.amplitude - 2 * params.amplitude * distFromCenter;
           break;
         case 'sine':
-          multiplier = 1 + params.amplitude * Math.sin(rowFraction * Math.PI * params.frequency);
+          multiplier =
+            1 + params.amplitude * Math.sin(rowFraction * Math.PI * params.frequency - ctx.t * scroll);
           break;
       }
       multiplier = Math.max(0.05, multiplier);
