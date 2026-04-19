@@ -61,7 +61,7 @@ export function SpacingCard({ treatment, params }: SpacingCardProps) {
               onAnimate={() => quickAnimate('frequency', DEFAULT_SPACING_PARAMS.frequency, params.frequency)}
             />
             <Slider
-              label="Scroll" value={params.scroll ?? 0} min={-5} max={5} step={0.05}
+              label="Scroll (cycles/loop)" value={params.scroll ?? 0} min={-5} max={5} step={1}
               onChange={(v) => updateParams({ scroll: v })}
               onAnimate={() => quickAnimate('scroll', DEFAULT_SPACING_PARAMS.scroll, params.scroll ?? 0)}
             />
@@ -76,7 +76,7 @@ export function SpacingCard({ treatment, params }: SpacingCardProps) {
               ? [
                   { key: 'amplitude', min: 0,   max: 1, step: 0.01 },
                   { key: 'frequency', min: 0.1, max: 5, step: 0.1 },
-                  { key: 'scroll',    min: -5,  max: 5, step: 0.05 },
+                  { key: 'scroll',    min: -5,  max: 5, step: 1 },
                 ]
               : [{ key: 'amplitude', min: 0, max: 1, step: 0.01 }]
           }

@@ -9,7 +9,7 @@ const baseCell: Cell = {
 };
 
 const ctx = (rows: number, cols: number) => ({
-  config: DEFAULT_BASE_CONFIG, rows, columns: cols, t: 0,
+  config: DEFAULT_BASE_CONFIG, rows, columns: cols, t: 0, loopDuration: 4,
 });
 
 describe('Silhouette treatment (Lens)', () => {

@@ -26,25 +26,25 @@ const disabled: Treatment = {
 describe('runPipeline', () => {
   it('returns cells unchanged when no treatments are active', () => {
     const cells = makeCells();
-    const result = runPipeline(cells, [], { config: cfg, rows: 5, columns: 5, t: 0 });
+    const result = runPipeline(cells, [], { config: cfg, rows: 5, columns: 5, t: 0, loopDuration: 4 });
     expect(result).toEqual(cells);
   });
 
   it('applies a single enabled treatment to every cell', () => {
     const cells = makeCells();
-    const result = runPipeline(cells, [dimAll], { config: cfg, rows: 5, columns: 5, t: 0 });
+    const result = runPipeline(cells, [dimAll], { config: cfg, rows: 5, columns: 5, t: 0, loopDuration: 4 });
     expect(result.every(c => c.opacity === 0.5)).toBe(true);
   });
 
   it('applies multiple treatments in order', () => {
     const cells = makeCells();
-    const result = runPipeline(cells, [dimAll, hideAll], { config: cfg, rows: 5, columns: 5, t: 0 });
+    const result = runPipeline(cells, [dimAll, hideAll], { config: cfg, rows: 5, columns: 5, t: 0, loopDuration: 4 });
     expect(result.every(c => c.opacity === 0.5 && c.visible === false)).toBe(true);
   });
 
   it('skips disabled treatments', () => {
     const cells = makeCells();
-    const result = runPipeline(cells, [disabled], { config: cfg, rows: 5, columns: 5, t: 0 });
+    const result = runPipeline(cells, [disabled], { config: cfg, rows: 5, columns: 5, t: 0, loopDuration: 4 });
     expect(result.every(c => c.color === cfg.fgColor)).toBe(true);
   });
 });

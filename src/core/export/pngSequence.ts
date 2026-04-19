@@ -42,7 +42,7 @@ export async function exportPngSequence(opts: PngSequenceOptions): Promise<void>
     const rows = Math.floor(config.canvas.height / config.rowSpacing);
     const columns = rows > 0 ? layoutCells.length / rows : 0;
     const finalCells = runAnimatedPipeline(layoutCells, treatments, animations, {
-      config, rows, columns, t,
+      config, rows, columns, t, loopDuration,
     });
 
     renderToCanvas(ctx, finalCells, config);

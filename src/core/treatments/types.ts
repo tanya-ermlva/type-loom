@@ -4,13 +4,18 @@ import type { MaskParams } from '../mask/types';
 /**
  * Context passed to every treatment, providing what it needs to compute
  * its modifier function: the base config, the current row/col counts,
- * and the current animation time t (always 0 in v0.1).
+ * the current animation time t, and the loop duration.
+ *
+ * `loopDuration` is needed by treatments that scroll/translate their
+ * spatial pattern over time and need to wrap seamlessly at the loop
+ * boundary (e.g., Spacing rhythm Sine wave's scroll).
  */
 export interface TreatmentContext {
   config: BaseGridConfig;
   rows: number;
   columns: number;
-  t: number; // seconds since start (0 in v0.1, no animation)
+  t: number;             // seconds within the current loop
+  loopDuration: number;  // seconds; the playback loop length
 }
 
 /**

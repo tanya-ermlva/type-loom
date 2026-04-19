@@ -7,7 +7,7 @@ export interface SpacingParams {
   pattern: SpacingPattern;
   amplitude: number;   // 0..1, how strong the variation is
   frequency: number;   // for 'sine' pattern only, cycles down the canvas
-  scroll: number;      // for 'sine' pattern only, radians/sec to shift the wave; +down, -up
+  scroll: number;      // for 'sine' pattern only, full sine cycles per loop; +down, -up. Integer values produce seamless loops.
 }
 
 /**
@@ -43,10 +43,16 @@ export function createSpacing(params: SpacingParams): Treatment {
           // middle = 1 + amp (looser), edges = 1 - amp (tighter)
           multiplier = 1 + params.amplitude - 2 * params.amplitude * distFromCenter;
           break;
-        case 'sine':
+        case 'sine': {
+          // Phase shift over time = (t / loopDuration) * 2π * scroll cycles.
+          // At t=loopDuration → shift = 2π * scroll. Integer scroll → full
+          // sine cycles → seamless loop; fractional scroll wraps imperfectly.
+          const loop = Math.max(0.0001, ctx.loopDuration);
+          const phaseShift = (ctx.t / loop) * 2 * Math.PI * scroll;
           multiplier =
-            1 + params.amplitude * Math.sin(rowFraction * Math.PI * params.frequency - ctx.t * scroll);
+            1 + params.amplitude * Math.sin(rowFraction * Math.PI * params.frequency - phaseShift);
           break;
+        }
       }
       multiplier = Math.max(0.05, multiplier);
 
