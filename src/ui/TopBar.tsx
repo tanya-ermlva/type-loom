@@ -3,12 +3,14 @@ import { useStore } from '../state/store';
 import { exportCanvasAsPng } from '../core/export/png';
 import { exportCanvasAsVideo, pickMimeType } from '../core/export/video';
 import { exportPngSequence } from '../core/export/pngSequence';
+import { ProjectsMenu } from './ProjectsMenu';
 
 interface TopBarProps {
   canvasRef: RefObject<HTMLCanvasElement | null>;
+  onOpenProjects: () => void;
 }
 
-export function TopBar({ canvasRef }: TopBarProps) {
+export function TopBar({ canvasRef, onOpenProjects }: TopBarProps) {
   const input = useStore((s) => s.config.input);
   const updateConfig = useStore((s) => s.updateConfig);
   const config = useStore((s) => s.config);
@@ -80,6 +82,7 @@ export function TopBar({ canvasRef }: TopBarProps) {
   return (
     <header className="h-12 border-b border-gray-200 bg-white flex items-center px-4 gap-3 relative">
       <span className="text-sm font-medium text-gray-800">Type Loom</span>
+      <ProjectsMenu canvasRef={canvasRef} onOpenManage={onOpenProjects} />
       <input
         type="text"
         value={input}
