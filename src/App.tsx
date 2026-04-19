@@ -1,3 +1,20 @@
+import { useRef } from 'react';
+import { TopBar } from './ui/TopBar';
+import { BasePanel } from './ui/BasePanel';
+import { CanvasPreview } from './ui/CanvasPreview';
+import { TreatmentsPanel } from './ui/TreatmentsPanel';
+
 export default function App() {
-  return <div className="h-full grid place-items-center">Type Loom</div>;
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  return (
+    <div className="h-full flex flex-col bg-gray-50">
+      <TopBar canvasRef={canvasRef} />
+      <div className="flex-1 flex min-h-0">
+        <BasePanel />
+        <CanvasPreview ref={canvasRef} />
+        <TreatmentsPanel />
+      </div>
+    </div>
+  );
 }
