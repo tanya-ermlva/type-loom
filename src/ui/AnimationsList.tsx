@@ -1,61 +1,84 @@
 import { useState } from 'react';
 import { useStore } from '../state/store';
-import { NumberField } from './controls/NumberField';
+import { Slider } from './controls/Slider';
 import type { TreatmentType } from '../core/treatments/types';
 import type { AnimationSpec, AnimationCurve, StaggerAxis } from '../core/animation/types';
 import type { MaskParams } from '../core/mask/types';
 
+export interface AnimatableParam {
+  key: string;
+  min: number;
+  max: number;
+  step: number;
+}
+
 interface AnimationsListProps {
   treatmentId: string;
   treatmentType: TreatmentType;
-  /** Numeric param keys on this treatment that can be animated (excluding mask). */
-  numericParamKeys: string[];
+  /** Animatable params on this treatment (excluding mask). Each carries its slider range. */
+  animatableParams: AnimatableParam[];
   /** Current values, used to seed `from` and `to` when adding. */
   currentParams: Record<string, unknown>;
   /** Optional mask — when present, mask.* keys join the animatable list. */
   mask?: MaskParams | null;
 }
 
-const MASK_KEYS_COMMON = ['mask.centerX', 'mask.centerY', 'mask.sizeX', 'mask.softness'];
-const MASK_KEYS_RECT_EXTRA = ['mask.sizeY'];
+const MASK_PARAM_RANGES: Record<string, { min: number; max: number; step: number }> = {
+  'mask.centerX':  { min: 0,    max: 1, step: 0.01 },
+  'mask.centerY':  { min: 0,    max: 1, step: 0.01 },
+  'mask.sizeX':    { min: 0.01, max: 1, step: 0.01 },
+  'mask.sizeY':    { min: 0.01, max: 1, step: 0.01 },
+  'mask.softness': { min: 0,    max: 1, step: 0.01 },
+};
 
-function buildMaskKeys(mask: MaskParams): string[] {
-  return mask.shape === 'rect'
-    ? [...MASK_KEYS_COMMON.slice(0, 3), ...MASK_KEYS_RECT_EXTRA, 'mask.softness']
-    : MASK_KEYS_COMMON;
+function buildMaskParams(mask: MaskParams): AnimatableParam[] {
+  const keys = mask.shape === 'rect'
+    ? ['mask.centerX', 'mask.centerY', 'mask.sizeX', 'mask.sizeY', 'mask.softness']
+    : ['mask.centerX', 'mask.centerY', 'mask.sizeX', 'mask.softness'];
+  return keys.map((k) => ({ key: k, ...MASK_PARAM_RANGES[k] }));
 }
 
 function buildMaskValues(mask: MaskParams): Record<string, unknown> {
   return {
     'mask.centerX': mask.centerX,
     'mask.centerY': mask.centerY,
-    'mask.sizeX': mask.sizeX,
-    'mask.sizeY': mask.sizeY,
+    'mask.sizeX':   mask.sizeX,
+    'mask.sizeY':   mask.sizeY,
     'mask.softness': mask.softness,
   };
 }
 
+const SELECT_CLS =
+  'w-full border border-gray-300 rounded px-2 py-1 text-xs bg-white focus:outline-none focus:border-blue-400';
+
 /**
- * UI inside each treatment card for managing animations on that treatment's
- * numeric parameters. Lists active animations and provides an add-form.
+ * Per-treatment animation list. Each row uses sliders (with the param's
+ * native range) for from / to / duration / stagger, plus dropdowns for
+ * curve and stagger axis.
  */
 export function AnimationsList({
   treatmentId,
   treatmentType,
-  numericParamKeys,
+  animatableParams,
   currentParams,
   mask,
 }: AnimationsListProps) {
-  const allKeys = mask ? [...numericParamKeys, ...buildMaskKeys(mask)] : numericParamKeys;
+  const allParams = mask ? [...animatableParams, ...buildMaskParams(mask)] : animatableParams;
   const allValues = mask ? { ...currentParams, ...buildMaskValues(mask) } : currentParams;
+  const allKeys = allParams.map((p) => p.key);
+
   const animations = useStore((s) => s.animations);
   const addAnimation = useStore((s) => s.addAnimation);
   const removeAnimation = useStore((s) => s.removeAnimation);
   const updateAnimation = useStore((s) => s.updateAnimation);
+
   const [adding, setAdding] = useState(false);
   const [newKey, setNewKey] = useState(allKeys[0] ?? '');
 
   const myAnims = animations.filter((a) => a.treatmentId === treatmentId);
+
+  const findRange = (key: string): AnimatableParam =>
+    allParams.find((p) => p.key === key) ?? { key, min: 0, max: 1, step: 0.01 };
 
   const duplicateAnimation = (source: AnimationSpec) => {
     addAnimation({ ...source, id: crypto.randomUUID() });
@@ -64,13 +87,15 @@ export function AnimationsList({
   const handleAdd = () => {
     if (!newKey) return;
     const seedValue = Number(allValues[newKey] ?? 0);
+    const range = findRange(newKey);
+    const span = Math.max(0.05, (range.max - range.min) * 0.3);
     const spec: AnimationSpec = {
       id: crypto.randomUUID(),
       treatmentId,
       treatmentType,
       paramKey: newKey,
-      from: seedValue,
-      to: seedValue === 0 ? 1 : seedValue * 2,
+      from: Math.max(range.min, seedValue - span / 2),
+      to: Math.min(range.max, seedValue + span / 2),
       curve: 'sine',
       duration: 4,
       delay: 0,
@@ -88,7 +113,7 @@ export function AnimationsList({
         {!adding && (
           <button
             onClick={() => setAdding(true)}
-            className="text-xs text-blue-600 hover:underline"
+            className="text-xs text-blue-600 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 rounded"
           >
             + Animate
           </button>
@@ -100,7 +125,7 @@ export function AnimationsList({
           <select
             value={newKey}
             onChange={(e) => setNewKey(e.target.value)}
-            className="flex-1 border border-gray-300 rounded px-1 py-0.5 text-xs"
+            className={`${SELECT_CLS} flex-1`}
           >
             {allKeys.map((k) => (
               <option key={k} value={k}>{k}</option>
@@ -108,13 +133,13 @@ export function AnimationsList({
           </select>
           <button
             onClick={handleAdd}
-            className="text-xs px-2 py-0.5 bg-gray-900 text-white rounded"
+            className="text-xs px-2 py-1 bg-gray-900 text-white rounded hover:bg-gray-700"
           >
             Add
           </button>
           <button
             onClick={() => setAdding(false)}
-            className="text-xs px-2 py-0.5 text-gray-500 hover:text-gray-800"
+            className="text-xs px-2 py-1 text-gray-500 hover:text-gray-800"
           >
             ✕
           </button>
@@ -126,98 +151,84 @@ export function AnimationsList({
       )}
 
       <div className="space-y-2">
-        {myAnims.map((a) => (
-          <div key={a.id} className="bg-blue-50/40 border border-blue-100 rounded p-2 text-xs">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="font-medium text-gray-800">animating <code className="text-blue-700">{a.paramKey}</code></span>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => duplicateAnimation(a)}
-                  className="text-gray-400 hover:text-blue-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 rounded"
-                  aria-label="Duplicate animation"
-                  title="Duplicate this animation"
-                >⧉</button>
-                <button
-                  onClick={() => removeAnimation(a.id)}
-                  className="text-gray-400 hover:text-red-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 rounded"
-                  aria-label="Remove animation"
-                >✕</button>
+        {myAnims.map((a) => {
+          const range = findRange(a.paramKey);
+          const staggerDisabled = a.staggerAmount === 0;
+          return (
+            <div key={a.id} className="border border-gray-200 rounded-md p-2.5 bg-white space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-gray-700">
+                  animating <code className="text-blue-600 bg-blue-50 px-1 rounded">{a.paramKey}</code>
+                </span>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => duplicateAnimation(a)}
+                    className="text-gray-400 hover:text-blue-500 px-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 rounded"
+                    aria-label="Duplicate animation"
+                    title="Duplicate this animation"
+                  >⧉</button>
+                  <button
+                    onClick={() => removeAnimation(a.id)}
+                    className="text-gray-400 hover:text-red-500 px-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 rounded"
+                    aria-label="Remove animation"
+                  >✕</button>
+                </div>
+              </div>
+
+              <Slider
+                label="from" value={a.from}
+                min={range.min} max={range.max} step={range.step}
+                onChange={(v) => updateAnimation(a.id, { from: v })}
+              />
+              <Slider
+                label="to" value={a.to}
+                min={range.min} max={range.max} step={range.step}
+                onChange={(v) => updateAnimation(a.id, { to: v })}
+              />
+              <Slider
+                label="duration (s)" value={a.duration}
+                min={0.1} max={20} step={0.1}
+                onChange={(v) => updateAnimation(a.id, { duration: Math.max(0.1, v) })}
+              />
+              <Slider
+                label="stagger (s)" value={a.staggerAmount}
+                min={0} max={10} step={0.1}
+                onChange={(v) => updateAnimation(a.id, { staggerAmount: Math.max(0, v) })}
+              />
+
+              <div className="grid grid-cols-2 gap-2 pt-0.5">
+                <label className="block text-xs">
+                  <div className="text-gray-500 mb-0.5">curve</div>
+                  <select
+                    value={a.curve}
+                    onChange={(e) => updateAnimation(a.id, { curve: e.target.value as AnimationCurve })}
+                    className={SELECT_CLS}
+                  >
+                    <option value="sine">sine</option>
+                    <option value="ease-in-out">ease-in-out</option>
+                    <option value="triangle">triangle</option>
+                    <option value="sawtooth">sawtooth</option>
+                  </select>
+                </label>
+                <label className="block text-xs">
+                  <div className="text-gray-500 mb-0.5">stagger axis</div>
+                  <select
+                    value={a.staggerAxis}
+                    onChange={(e) => updateAnimation(a.id, { staggerAxis: e.target.value as StaggerAxis })}
+                    disabled={staggerDisabled}
+                    className={`${SELECT_CLS} disabled:opacity-50 disabled:cursor-not-allowed`}
+                    title={staggerDisabled ? 'Set stagger > 0 to enable' : ''}
+                  >
+                    <option value="x">x</option>
+                    <option value="y">y</option>
+                    <option value="radial">radial</option>
+                    <option value="diagonal">diagonal</option>
+                  </select>
+                </label>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-1.5">
-              <label className="block">
-                <div className="text-gray-500">from</div>
-                <NumberField
-                  value={a.from}
-                  step={0.01}
-                  onChange={(v) => updateAnimation(a.id, { from: v })}
-                  className="w-full border border-gray-300 rounded px-1 py-0.5"
-                  ariaLabel="from"
-                />
-              </label>
-              <label className="block">
-                <div className="text-gray-500">to</div>
-                <NumberField
-                  value={a.to}
-                  step={0.01}
-                  onChange={(v) => updateAnimation(a.id, { to: v })}
-                  className="w-full border border-gray-300 rounded px-1 py-0.5"
-                  ariaLabel="to"
-                />
-              </label>
-              <label className="block">
-                <div className="text-gray-500">curve</div>
-                <select
-                  value={a.curve}
-                  onChange={(e) => updateAnimation(a.id, { curve: e.target.value as AnimationCurve })}
-                  className="w-full border border-gray-300 rounded px-1 py-0.5"
-                >
-                  <option value="sine">sine</option>
-                  <option value="ease-in-out">ease-in-out</option>
-                  <option value="triangle">triangle</option>
-                  <option value="sawtooth">sawtooth</option>
-                </select>
-              </label>
-              <label className="block">
-                <div className="text-gray-500">duration (s)</div>
-                <NumberField
-                  value={a.duration}
-                  step={0.1}
-                  min={0.1}
-                  onChange={(v) => updateAnimation(a.id, { duration: Math.max(0.1, v) })}
-                  className="w-full border border-gray-300 rounded px-1 py-0.5"
-                  ariaLabel="duration in seconds"
-                />
-              </label>
-              <label className="block">
-                <div className="text-gray-500">stagger (s)</div>
-                <NumberField
-                  value={a.staggerAmount}
-                  step={0.1}
-                  min={0}
-                  onChange={(v) => updateAnimation(a.id, { staggerAmount: Math.max(0, v) })}
-                  className="w-full border border-gray-300 rounded px-1 py-0.5"
-                  ariaLabel="stagger in seconds"
-                  title="Per-cell time offset across the grid. 0 = no stagger (all cells in unison)."
-                />
-              </label>
-              <label className="block">
-                <div className="text-gray-500">stagger axis</div>
-                <select
-                  value={a.staggerAxis}
-                  onChange={(e) => updateAnimation(a.id, { staggerAxis: e.target.value as StaggerAxis })}
-                  disabled={a.staggerAmount === 0}
-                  className="w-full border border-gray-300 rounded px-1 py-0.5 disabled:opacity-50"
-                >
-                  <option value="x">x</option>
-                  <option value="y">y</option>
-                  <option value="radial">radial</option>
-                  <option value="diagonal">diagonal</option>
-                </select>
-              </label>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

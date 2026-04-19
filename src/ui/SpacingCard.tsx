@@ -64,7 +64,14 @@ export function SpacingCard({ treatment, params }: SpacingCardProps) {
         <AnimationsList
           treatmentId={treatment.id}
           treatmentType="spacing"
-          numericParamKeys={params.pattern === 'sine' ? ['amplitude', 'frequency'] : ['amplitude']}
+          animatableParams={
+            params.pattern === 'sine'
+              ? [
+                  { key: 'amplitude', min: 0,   max: 1, step: 0.01 },
+                  { key: 'frequency', min: 0.1, max: 5, step: 0.1 },
+                ]
+              : [{ key: 'amplitude', min: 0, max: 1, step: 0.01 }]
+          }
           currentParams={params as unknown as Record<string, unknown>}
           mask={treatment.mask}
         />

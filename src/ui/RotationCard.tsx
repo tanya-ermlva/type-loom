@@ -63,7 +63,10 @@ export function RotationCard({ treatment, params }: RotationCardProps) {
         <AnimationsList
           treatmentId={treatment.id}
           treatmentType="rotation"
-          numericParamKeys={['minDegrees', 'maxDegrees']}
+          animatableParams={[
+            { key: 'minDegrees', min: -180, max: 180, step: 1 },
+            { key: 'maxDegrees', min: -180, max: 180, step: 1 },
+          ]}
           currentParams={params as unknown as Record<string, unknown>}
           mask={treatment.mask}
         />

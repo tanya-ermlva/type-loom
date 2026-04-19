@@ -62,7 +62,10 @@ export function DriftCard({ treatment, params }: DriftCardProps) {
         <AnimationsList
           treatmentId={treatment.id}
           treatmentType="drift"
-          numericParamKeys={['amplitude', 'frequency']}
+          animatableParams={[
+            { key: 'amplitude', min: 0, max: 200, step: 1 },
+            { key: 'frequency', min: 0, max: 2,   step: 0.01 },
+          ]}
           currentParams={params as unknown as Record<string, unknown>}
           mask={treatment.mask}
         />

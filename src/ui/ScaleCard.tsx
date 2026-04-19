@@ -62,7 +62,10 @@ export function ScaleCard({ treatment, params }: ScaleCardProps) {
         <AnimationsList
           treatmentId={treatment.id}
           treatmentType="scale"
-          numericParamKeys={['min', 'max']}
+          animatableParams={[
+            { key: 'min', min: 0.05, max: 3, step: 0.05 },
+            { key: 'max', min: 0.05, max: 3, step: 0.05 },
+          ]}
           currentParams={params as unknown as Record<string, unknown>}
           mask={treatment.mask}
         />

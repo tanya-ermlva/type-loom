@@ -85,7 +85,14 @@ export function TintCard({ treatment, params }: TintCardProps) {
         <AnimationsList
           treatmentId={treatment.id}
           treatmentType="tint"
-          numericParamKeys={params.mode === 'opacity' ? ['minOpacity', 'maxOpacity'] : []}
+          animatableParams={
+            params.mode === 'opacity'
+              ? [
+                  { key: 'minOpacity', min: 0, max: 1, step: 0.01 },
+                  { key: 'maxOpacity', min: 0, max: 1, step: 0.01 },
+                ]
+              : []
+          }
           currentParams={params as unknown as Record<string, unknown>}
           mask={treatment.mask}
         />

@@ -63,7 +63,10 @@ export function SilhouetteCard({ treatment, params }: SilhouetteCardProps) {
         <AnimationsList
           treatmentId={treatment.id}
           treatmentType="silhouette"
-          numericParamKeys={['size', 'softness']}
+          animatableParams={[
+            { key: 'size',     min: 0.05, max: 1.5, step: 0.01 },
+            { key: 'softness', min: 0,    max: 1,   step: 0.01 },
+          ]}
           currentParams={params as unknown as Record<string, unknown>}
           mask={treatment.mask}
         />
