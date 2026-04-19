@@ -3,6 +3,7 @@ import type { Treatment } from '../core/treatments/types';
 import { createSilhouette, type SilhouetteParams } from '../core/treatments/silhouette';
 import { Slider } from './controls/Slider';
 import { AnimationsList } from './AnimationsList';
+import { MaskControls } from './MaskControls';
 
 interface SilhouetteCardProps {
   treatment: Treatment;
@@ -15,7 +16,7 @@ export function SilhouetteCard({ treatment, params }: SilhouetteCardProps) {
 
   const updateParams = (patch: Partial<SilhouetteParams>) => {
     const nextParams = { ...params, ...patch };
-    const next = { ...createSilhouette(nextParams), id: treatment.id, enabled: treatment.enabled };
+    const next = { ...createSilhouette(nextParams), id: treatment.id, enabled: treatment.enabled, mask: treatment.mask };
     (next as Treatment & { params: SilhouetteParams }).params = nextParams;
     updateTreatment(treatment.id, next);
   };
@@ -52,11 +53,14 @@ export function SilhouetteCard({ treatment, params }: SilhouetteCardProps) {
           <span className="text-gray-700">Invert</span>
         </label>
 
+        <MaskControls treatment={treatment} />
+
         <AnimationsList
           treatmentId={treatment.id}
           treatmentType="silhouette"
           numericParamKeys={['size', 'softness']}
           currentParams={params as unknown as Record<string, unknown>}
+          mask={treatment.mask}
         />
       </div>
     </div>

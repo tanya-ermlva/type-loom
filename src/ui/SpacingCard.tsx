@@ -3,6 +3,7 @@ import type { Treatment } from '../core/treatments/types';
 import { createSpacing, type SpacingParams, type SpacingPattern } from '../core/treatments/spacing';
 import { Slider } from './controls/Slider';
 import { AnimationsList } from './AnimationsList';
+import { MaskControls } from './MaskControls';
 
 interface SpacingCardProps {
   treatment: Treatment;
@@ -15,7 +16,7 @@ export function SpacingCard({ treatment, params }: SpacingCardProps) {
 
   const updateParams = (patch: Partial<SpacingParams>) => {
     const nextParams = { ...params, ...patch };
-    const next = { ...createSpacing(nextParams), id: treatment.id, enabled: treatment.enabled };
+    const next = { ...createSpacing(nextParams), id: treatment.id, enabled: treatment.enabled, mask: treatment.mask };
     (next as Treatment & { params: SpacingParams }).params = nextParams;
     updateTreatment(treatment.id, next);
   };
@@ -52,11 +53,13 @@ export function SpacingCard({ treatment, params }: SpacingCardProps) {
           label="Frequency" value={params.frequency} min={0.1} max={5} step={0.1}
           onChange={(v) => updateParams({ frequency: v })}
         />
+        <MaskControls treatment={treatment} />
         <AnimationsList
           treatmentId={treatment.id}
           treatmentType="spacing"
           numericParamKeys={['amplitude', 'frequency']}
           currentParams={params as unknown as Record<string, unknown>}
+          mask={treatment.mask}
         />
       </div>
     </div>

@@ -80,7 +80,6 @@ export function TopBar({ canvasRef }: TopBarProps) {
   return (
     <header className="h-12 border-b border-gray-200 bg-white flex items-center px-4 gap-3 relative">
       <span className="text-sm font-medium text-gray-800">Type Loom</span>
-      <ModeToggle />
       <input
         type="text"
         value={input}
@@ -137,32 +136,5 @@ export function TopBar({ canvasRef }: TopBarProps) {
         )}
       </div>
     </header>
-  );
-}
-
-function ModeToggle() {
-  const mode = useStore((s) => s.mode);
-  const setMode = useStore((s) => s.setMode);
-  const baseBtn = 'px-2 py-1 text-xs rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400';
-  const activeBtn = 'bg-gray-900 text-white';
-  const inactiveBtn = 'text-gray-500 hover:text-gray-800';
-
-  return (
-    <div className="flex items-center gap-1 bg-gray-100 rounded p-0.5">
-      <button
-        onClick={() => setMode('single')}
-        className={`${baseBtn} ${mode === 'single' ? activeBtn : inactiveBtn}`}
-        title="Single composition"
-      >
-        Single
-      </button>
-      <button
-        onClick={() => setMode('variations')}
-        className={`${baseBtn} ${mode === 'variations' ? activeBtn : inactiveBtn}`}
-        title="Four random variations"
-      >
-        4-up
-      </button>
-    </div>
   );
 }

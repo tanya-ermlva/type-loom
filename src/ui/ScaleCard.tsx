@@ -3,6 +3,7 @@ import type { Treatment } from '../core/treatments/types';
 import { createScale, type ScaleParams, type ScalePattern } from '../core/treatments/scale';
 import { Slider } from './controls/Slider';
 import { AnimationsList } from './AnimationsList';
+import { MaskControls } from './MaskControls';
 
 interface ScaleCardProps {
   treatment: Treatment;
@@ -15,7 +16,7 @@ export function ScaleCard({ treatment, params }: ScaleCardProps) {
 
   const updateParams = (patch: Partial<ScaleParams>) => {
     const nextParams = { ...params, ...patch };
-    const next = { ...createScale(nextParams), id: treatment.id, enabled: treatment.enabled };
+    const next = { ...createScale(nextParams), id: treatment.id, enabled: treatment.enabled, mask: treatment.mask };
     (next as Treatment & { params: ScaleParams }).params = nextParams;
     updateTreatment(treatment.id, next);
   };
@@ -52,11 +53,13 @@ export function ScaleCard({ treatment, params }: ScaleCardProps) {
           label="Max scale" value={params.max} min={0.05} max={3} step={0.05}
           onChange={(v) => updateParams({ max: v })}
         />
+        <MaskControls treatment={treatment} />
         <AnimationsList
           treatmentId={treatment.id}
           treatmentType="scale"
           numericParamKeys={['min', 'max']}
           currentParams={params as unknown as Record<string, unknown>}
+          mask={treatment.mask}
         />
       </div>
     </div>

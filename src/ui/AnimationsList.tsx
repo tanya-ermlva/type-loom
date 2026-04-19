@@ -2,14 +2,36 @@ import { useState } from 'react';
 import { useStore } from '../state/store';
 import type { TreatmentType } from '../core/treatments/types';
 import type { AnimationSpec, AnimationCurve, StaggerAxis } from '../core/animation/types';
+import type { MaskParams } from '../core/mask/types';
 
 interface AnimationsListProps {
   treatmentId: string;
   treatmentType: TreatmentType;
-  /** Numeric param keys on this treatment that can be animated. */
+  /** Numeric param keys on this treatment that can be animated (excluding mask). */
   numericParamKeys: string[];
   /** Current values, used to seed `from` and `to` when adding. */
   currentParams: Record<string, unknown>;
+  /** Optional mask — when present, mask.* keys join the animatable list. */
+  mask?: MaskParams | null;
+}
+
+const MASK_KEYS_COMMON = ['mask.centerX', 'mask.centerY', 'mask.sizeX', 'mask.softness'];
+const MASK_KEYS_RECT_EXTRA = ['mask.sizeY'];
+
+function buildMaskKeys(mask: MaskParams): string[] {
+  return mask.shape === 'rect'
+    ? [...MASK_KEYS_COMMON.slice(0, 3), ...MASK_KEYS_RECT_EXTRA, 'mask.softness']
+    : MASK_KEYS_COMMON;
+}
+
+function buildMaskValues(mask: MaskParams): Record<string, unknown> {
+  return {
+    'mask.centerX': mask.centerX,
+    'mask.centerY': mask.centerY,
+    'mask.sizeX': mask.sizeX,
+    'mask.sizeY': mask.sizeY,
+    'mask.softness': mask.softness,
+  };
 }
 
 /**
@@ -21,13 +43,16 @@ export function AnimationsList({
   treatmentType,
   numericParamKeys,
   currentParams,
+  mask,
 }: AnimationsListProps) {
+  const allKeys = mask ? [...numericParamKeys, ...buildMaskKeys(mask)] : numericParamKeys;
+  const allValues = mask ? { ...currentParams, ...buildMaskValues(mask) } : currentParams;
   const animations = useStore((s) => s.animations);
   const addAnimation = useStore((s) => s.addAnimation);
   const removeAnimation = useStore((s) => s.removeAnimation);
   const updateAnimation = useStore((s) => s.updateAnimation);
   const [adding, setAdding] = useState(false);
-  const [newKey, setNewKey] = useState(numericParamKeys[0] ?? '');
+  const [newKey, setNewKey] = useState(allKeys[0] ?? '');
 
   const myAnims = animations.filter((a) => a.treatmentId === treatmentId);
 
@@ -37,7 +62,7 @@ export function AnimationsList({
 
   const handleAdd = () => {
     if (!newKey) return;
-    const seedValue = Number(currentParams[newKey] ?? 0);
+    const seedValue = Number(allValues[newKey] ?? 0);
     const spec: AnimationSpec = {
       id: crypto.randomUUID(),
       treatmentId,
@@ -76,7 +101,7 @@ export function AnimationsList({
             onChange={(e) => setNewKey(e.target.value)}
             className="flex-1 border border-gray-300 rounded px-1 py-0.5 text-xs"
           >
-            {numericParamKeys.map((k) => (
+            {allKeys.map((k) => (
               <option key={k} value={k}>{k}</option>
             ))}
           </select>

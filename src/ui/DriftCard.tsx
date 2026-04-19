@@ -3,6 +3,7 @@ import type { Treatment } from '../core/treatments/types';
 import { createDrift, type DriftParams, type DriftAxis } from '../core/treatments/drift';
 import { Slider } from './controls/Slider';
 import { AnimationsList } from './AnimationsList';
+import { MaskControls } from './MaskControls';
 
 interface DriftCardProps {
   treatment: Treatment;
@@ -15,7 +16,7 @@ export function DriftCard({ treatment, params }: DriftCardProps) {
 
   const updateParams = (patch: Partial<DriftParams>) => {
     const nextParams = { ...params, ...patch };
-    const next = { ...createDrift(nextParams), id: treatment.id, enabled: treatment.enabled };
+    const next = { ...createDrift(nextParams), id: treatment.id, enabled: treatment.enabled, mask: treatment.mask };
     (next as Treatment & { params: DriftParams }).params = nextParams;
     updateTreatment(treatment.id, next);
   };
@@ -52,11 +53,13 @@ export function DriftCard({ treatment, params }: DriftCardProps) {
           label="Frequency" value={params.frequency} min={0} max={2} step={0.01}
           onChange={(v) => updateParams({ frequency: v })}
         />
+        <MaskControls treatment={treatment} />
         <AnimationsList
           treatmentId={treatment.id}
           treatmentType="drift"
           numericParamKeys={['amplitude', 'frequency']}
           currentParams={params as unknown as Record<string, unknown>}
+          mask={treatment.mask}
         />
       </div>
     </div>

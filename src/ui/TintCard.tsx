@@ -4,6 +4,7 @@ import { createTint, type TintParams, type TintMode, type TintPattern } from '..
 import { Slider } from './controls/Slider';
 import { ColorSwatch } from './controls/ColorSwatch';
 import { AnimationsList } from './AnimationsList';
+import { MaskControls } from './MaskControls';
 
 interface TintCardProps {
   treatment: Treatment;
@@ -16,7 +17,7 @@ export function TintCard({ treatment, params }: TintCardProps) {
 
   const updateParams = (patch: Partial<TintParams>) => {
     const nextParams = { ...params, ...patch };
-    const next = { ...createTint(nextParams), id: treatment.id, enabled: treatment.enabled };
+    const next = { ...createTint(nextParams), id: treatment.id, enabled: treatment.enabled, mask: treatment.mask };
     (next as Treatment & { params: TintParams }).params = nextParams;
     updateTreatment(treatment.id, next);
   };
@@ -75,11 +76,13 @@ export function TintCard({ treatment, params }: TintCardProps) {
           </div>
         )}
 
+        <MaskControls treatment={treatment} />
         <AnimationsList
           treatmentId={treatment.id}
           treatmentType="tint"
           numericParamKeys={params.mode === 'opacity' ? ['minOpacity', 'maxOpacity'] : []}
           currentParams={params as unknown as Record<string, unknown>}
+          mask={treatment.mask}
         />
       </div>
     </div>

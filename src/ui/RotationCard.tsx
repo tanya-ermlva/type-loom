@@ -3,6 +3,7 @@ import type { Treatment } from '../core/treatments/types';
 import { createRotation, type RotationParams, type RotationPattern } from '../core/treatments/rotation';
 import { Slider } from './controls/Slider';
 import { AnimationsList } from './AnimationsList';
+import { MaskControls } from './MaskControls';
 
 interface RotationCardProps {
   treatment: Treatment;
@@ -15,7 +16,7 @@ export function RotationCard({ treatment, params }: RotationCardProps) {
 
   const updateParams = (patch: Partial<RotationParams>) => {
     const nextParams = { ...params, ...patch };
-    const next = { ...createRotation(nextParams), id: treatment.id, enabled: treatment.enabled };
+    const next = { ...createRotation(nextParams), id: treatment.id, enabled: treatment.enabled, mask: treatment.mask };
     (next as Treatment & { params: RotationParams }).params = nextParams;
     updateTreatment(treatment.id, next);
   };
@@ -53,11 +54,13 @@ export function RotationCard({ treatment, params }: RotationCardProps) {
           label="Max degrees" value={params.maxDegrees} min={-180} max={180} step={1}
           onChange={(v) => updateParams({ maxDegrees: v })}
         />
+        <MaskControls treatment={treatment} />
         <AnimationsList
           treatmentId={treatment.id}
           treatmentType="rotation"
           numericParamKeys={['minDegrees', 'maxDegrees']}
           currentParams={params as unknown as Record<string, unknown>}
+          mask={treatment.mask}
         />
       </div>
     </div>
