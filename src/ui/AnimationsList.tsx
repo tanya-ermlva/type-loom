@@ -31,6 +31,10 @@ export function AnimationsList({
 
   const myAnims = animations.filter((a) => a.treatmentId === treatmentId);
 
+  const duplicateAnimation = (source: AnimationSpec) => {
+    addAnimation({ ...source, id: crypto.randomUUID() });
+  };
+
   const handleAdd = () => {
     if (!newKey) return;
     const seedValue = Number(currentParams[newKey] ?? 0);
@@ -100,11 +104,19 @@ export function AnimationsList({
           <div key={a.id} className="bg-blue-50/40 border border-blue-100 rounded p-2 text-xs">
             <div className="flex items-center justify-between mb-1.5">
               <span className="font-medium text-gray-800">animating <code className="text-blue-700">{a.paramKey}</code></span>
-              <button
-                onClick={() => removeAnimation(a.id)}
-                className="text-gray-400 hover:text-red-500"
-                aria-label="Remove animation"
-              >✕</button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => duplicateAnimation(a)}
+                  className="text-gray-400 hover:text-blue-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 rounded"
+                  aria-label="Duplicate animation"
+                  title="Duplicate this animation"
+                >⧉</button>
+                <button
+                  onClick={() => removeAnimation(a.id)}
+                  className="text-gray-400 hover:text-red-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 rounded"
+                  aria-label="Remove animation"
+                >✕</button>
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-1.5">
               <label className="block">

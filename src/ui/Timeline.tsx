@@ -16,15 +16,17 @@ export function Timeline() {
     <footer className="h-12 border-t border-gray-200 bg-white flex items-center px-4 gap-4">
       <button
         onClick={() => setPlaying(!isPlaying)}
-        className="w-9 h-7 rounded bg-gray-900 text-white text-sm hover:bg-gray-700"
+        className="w-9 h-7 rounded bg-gray-900 text-white text-sm hover:bg-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
         aria-label={isPlaying ? 'Pause' : 'Play'}
+        title="Play / pause (Space)"
       >
         {isPlaying ? '❚❚' : '▶'}
       </button>
       <button
         onClick={() => setCurrentTime(0)}
-        className="text-xs text-gray-500 hover:text-gray-800"
+        className="text-xs text-gray-500 hover:text-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 rounded"
         aria-label="Jump to start"
+        title="Jump to start"
       >
         ⏮
       </button>

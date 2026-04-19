@@ -85,8 +85,14 @@ export function TopBar({ canvasRef }: TopBarProps) {
         value={input}
         onChange={(e) => updateConfig({ input: e.target.value })}
         placeholder="TYPE"
-        className="flex-1 border border-gray-300 rounded px-3 py-1.5 text-sm font-mono"
+        className="flex-1 border border-gray-300 rounded px-3 py-1.5 text-sm font-mono focus:outline-none focus:border-blue-400"
       />
+      <span
+        className="text-[11px] text-gray-400 hidden sm:inline"
+        title="Space — play / pause&#10;R — randomize palette&#10;Esc — close menus / blur input&#10;Shift+Arrow on a slider — 10× step"
+      >
+        ⌨ shortcuts
+      </span>
       <div ref={menuRef} className="relative">
         <button
           onClick={() => setMenuOpen((o) => !o)}

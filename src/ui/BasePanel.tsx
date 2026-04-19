@@ -53,8 +53,8 @@ export function BasePanel() {
             <span className="text-xs text-gray-400 uppercase tracking-wider">Colors</span>
             <button
               onClick={randomizePalette}
-              className="text-xs text-blue-600 hover:underline"
-              title="Pick a random color pair from the palette"
+              className="text-xs text-blue-600 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 rounded"
+              title="Randomize palette (R)"
             >
               🎲 Randomize
             </button>
