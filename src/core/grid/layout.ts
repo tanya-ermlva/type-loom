@@ -21,12 +21,18 @@ export function computeLayout(config: BaseGridConfig): Cell[] {
   const columns = numWords * input.length;
   const rows = Math.floor(canvas.height / rowSpacing);
 
+  // Center the composition both axes by offsetting by half the unused margin.
+  const contentWidth = numWords * wordWidth + Math.max(0, numWords - 1) * columnSpacing;
+  const contentHeight = rows * rowSpacing;
+  const xOffset = (canvas.width - contentWidth) / 2;
+  const yOffset = (canvas.height - contentHeight) / 2;
+
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < columns; c++) {
       const wordIndex = Math.floor(c / input.length);
       const charIndexInWord = c % input.length;
-      const x = wordIndex * period + charIndexInWord * charSpacing + charSpacing / 2;
-      const y = r * rowSpacing + rowSpacing / 2;
+      const x = xOffset + wordIndex * period + charIndexInWord * charSpacing + charSpacing / 2;
+      const y = yOffset + r * rowSpacing + rowSpacing / 2;
       cells.push({
         char: input[charIndexInWord],
         position: { x, y },

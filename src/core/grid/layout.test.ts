@@ -27,7 +27,7 @@ describe('computeLayout', () => {
     expect(cells.length).toBe(12);
   });
 
-  it('positions letters within a word adjacent (no gap within word)', () => {
+  it('positions letters within a word adjacent (no gap within word) and centers content', () => {
     const config = {
       ...DEFAULT_BASE_CONFIG,
       canvas: { width: 200, height: 50 },
@@ -35,12 +35,13 @@ describe('computeLayout', () => {
       input: 'OK',
     };
     const cells = computeLayout(config);
-    // First word: O at x=10, K at x=30 (charSpacing apart)
-    expect(cells[0].position.x).toBe(10);
-    expect(cells[1].position.x).toBe(30);
-    // Second word starts at period + charSpacing/2 = 60 + 10 = 70
-    expect(cells[2].position.x).toBe(70);
-    expect(cells[3].position.x).toBe(90);
+    // numWords=3, contentWidth = 3*40 + 2*20 = 160. xOffset = (200-160)/2 = 20.
+    // First word: O at x=20+10=30, K at 20+30=50
+    expect(cells[0].position.x).toBe(30);
+    expect(cells[1].position.x).toBe(50);
+    // Second word starts at xOffset + period + charSpacing/2 = 20 + 60 + 10 = 90
+    expect(cells[2].position.x).toBe(90);
+    expect(cells[3].position.x).toBe(110);
   });
 
   it('repeats the input word in correct order across the row', () => {
