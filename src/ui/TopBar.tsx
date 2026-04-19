@@ -1,7 +1,8 @@
-import { useState, type RefObject } from 'react';
+import { useState, useEffect, useRef, type RefObject } from 'react';
 import { useStore } from '../state/store';
 import { exportCanvasAsPng } from '../core/export/png';
-import { exportCanvasAsWebm } from '../core/export/video';
+import { exportCanvasAsVideo, pickMimeType } from '../core/export/video';
+import { exportPngSequence } from '../core/export/pngSequence';
 
 interface TopBarProps {
   canvasRef: RefObject<HTMLCanvasElement | null>;
@@ -10,30 +11,72 @@ interface TopBarProps {
 export function TopBar({ canvasRef }: TopBarProps) {
   const input = useStore((s) => s.config.input);
   const updateConfig = useStore((s) => s.updateConfig);
+  const config = useStore((s) => s.config);
+  const treatments = useStore((s) => s.treatments);
+  const animations = useStore((s) => s.animations);
   const loopDuration = useStore((s) => s.loopDuration);
   const setPlaying = useStore((s) => s.setPlaying);
   const setCurrentTime = useStore((s) => s.setCurrentTime);
-  const [recording, setRecording] = useState(false);
+
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  const mp4Supported = pickMimeType('mp4') !== null;
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [menuOpen]);
 
   const handleExportPng = () => {
-    if (canvasRef.current) exportCanvasAsPng(canvasRef.current);
+    if (!canvasRef.current) return;
+    setMenuOpen(false);
+    exportCanvasAsPng(canvasRef.current);
   };
 
-  const handleExportVideo = async () => {
-    if (!canvasRef.current || recording) return;
-    setRecording(true);
-    // Reset playhead and start playing so the recording captures one full loop.
+  const handleExportVideo = async (format: 'webm' | 'mp4') => {
+    if (!canvasRef.current || busy) return;
+    setMenuOpen(false);
+    setBusy(format.toUpperCase());
     setCurrentTime(0);
     setPlaying(true);
     try {
-      await exportCanvasAsWebm(canvasRef.current, loopDuration);
+      await exportCanvasAsVideo(canvasRef.current, loopDuration, format);
+    } catch (err) {
+      alert((err as Error).message);
     } finally {
-      setRecording(false);
+      setBusy(null);
+    }
+  };
+
+  const handleExportSequence = async () => {
+    if (busy) return;
+    setMenuOpen(false);
+    setBusy('PNG sequence');
+    setProgress({ done: 0, total: 0 });
+    try {
+      await exportPngSequence({
+        config, treatments, animations, loopDuration, fps: 30,
+        onProgress: (done, total) => setProgress({ done, total }),
+      });
+    } catch (err) {
+      alert((err as Error).message);
+    } finally {
+      setBusy(null);
+      setProgress(null);
     }
   };
 
   return (
-    <header className="h-12 border-b border-gray-200 bg-white flex items-center px-4 gap-4">
+    <header className="h-12 border-b border-gray-200 bg-white flex items-center px-4 gap-4 relative">
       <span className="text-sm font-medium text-gray-800">Type Loom</span>
       <input
         type="text"
@@ -42,20 +85,38 @@ export function TopBar({ canvasRef }: TopBarProps) {
         placeholder="TYPE"
         className="flex-1 border border-gray-300 rounded px-3 py-1.5 text-sm font-mono"
       />
-      <button
-        onClick={handleExportPng}
-        className="px-3 py-1.5 text-sm bg-gray-900 text-white rounded hover:bg-gray-700"
-      >
-        Export PNG
-      </button>
-      <button
-        onClick={handleExportVideo}
-        disabled={recording}
-        className="px-3 py-1.5 text-sm bg-gray-900 text-white rounded hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
-        title={`Records one full loop (${loopDuration.toFixed(1)}s) as WebM`}
-      >
-        {recording ? 'Recording…' : 'Export WebM'}
-      </button>
+      <div ref={menuRef} className="relative">
+        <button
+          onClick={() => setMenuOpen((o) => !o)}
+          disabled={!!busy}
+          className="px-3 py-1.5 text-sm bg-gray-900 text-white rounded hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {busy
+            ? (progress ? `${busy} (${progress.done}/${progress.total})` : `${busy}…`)
+            : 'Export ▾'}
+        </button>
+        {menuOpen && (
+          <div className="absolute right-0 top-full mt-1 w-56 bg-white border border-gray-200 rounded shadow-md z-10 text-sm">
+            <button onClick={handleExportPng} className="block w-full text-left px-3 py-2 hover:bg-gray-100 border-b border-gray-100">
+              PNG <span className="text-gray-400 text-xs">(current frame)</span>
+            </button>
+            <button onClick={handleExportSequence} className="block w-full text-left px-3 py-2 hover:bg-gray-100 border-b border-gray-100">
+              PNG sequence <span className="text-gray-400 text-xs">(.zip, full loop)</span>
+            </button>
+            <button onClick={() => handleExportVideo('webm')} className="block w-full text-left px-3 py-2 hover:bg-gray-100">
+              WebM <span className="text-gray-400 text-xs">(VP9)</span>
+            </button>
+            <button
+              onClick={() => handleExportVideo('mp4')}
+              disabled={!mp4Supported}
+              className="block w-full text-left px-3 py-2 hover:bg-gray-100 disabled:text-gray-300 disabled:cursor-not-allowed"
+              title={mp4Supported ? '' : 'Not supported in this browser — use WebM or PNG sequence + ffmpeg'}
+            >
+              MP4 <span className="text-gray-400 text-xs">(H.264{mp4Supported ? '' : ', unsupported'})</span>
+            </button>
+          </div>
+        )}
+      </div>
     </header>
   );
 }
