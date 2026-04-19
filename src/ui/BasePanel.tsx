@@ -8,6 +8,21 @@ import { DEFAULT_BASE_CONFIG } from '../core/types';
 
 const DEFAULT_FONT_FAMILY = DEFAULT_BASE_CONFIG.fontFamily;
 
+const CANVAS_PRESETS: Array<{ label: string; width: number; height: number }> = [
+  { label: 'Square 1:1',      width: 1080, height: 1080 },
+  { label: 'Portrait 4:5',    width: 1080, height: 1350 },
+  { label: 'Portrait 3:4',    width: 1080, height: 1440 },
+  { label: 'Portrait 9:16',   width: 1080, height: 1920 },
+  { label: 'Landscape 5:4',   width: 1350, height: 1080 },
+  { label: 'Landscape 4:3',   width: 1440, height: 1080 },
+  { label: 'Landscape 3:2',   width: 1620, height: 1080 },
+  { label: 'Landscape 16:9',  width: 1920, height: 1080 },
+];
+
+function findMatchingPreset(w: number, h: number): string {
+  return CANVAS_PRESETS.find((p) => p.width === w && p.height === h)?.label ?? 'Custom';
+}
+
 export function BasePanel() {
   const config = useStore((s) => s.config);
   const updateConfig = useStore((s) => s.updateConfig);
@@ -71,7 +86,23 @@ export function BasePanel() {
 
         <div>
           <div className="text-sm text-gray-700 mb-1">Canvas size</div>
-          <div className="flex gap-2 items-center">
+          <select
+            value={findMatchingPreset(config.canvas.width, config.canvas.height)}
+            onChange={(e) => {
+              if (e.target.value === 'Custom') return;
+              const preset = CANVAS_PRESETS.find((p) => p.label === e.target.value);
+              if (preset) updateConfig({ canvas: { width: preset.width, height: preset.height } });
+            }}
+            className="w-full border border-gray-300 rounded px-2 py-1 text-xs mb-1.5 bg-white focus:outline-none focus:border-blue-400"
+          >
+            {CANVAS_PRESETS.map((p) => (
+              <option key={p.label} value={p.label}>
+                {p.label} · {p.width}×{p.height}
+              </option>
+            ))}
+            <option value="Custom">Custom · {config.canvas.width}×{config.canvas.height}</option>
+          </select>
+          <div className="flex gap-1 items-center">
             <NumberField
               value={config.canvas.width}
               min={64}
@@ -81,7 +112,12 @@ export function BasePanel() {
               className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
               ariaLabel="Canvas width"
             />
-            <span className="text-gray-400">×</span>
+            <button
+              onClick={() => updateConfig({ canvas: { width: config.canvas.height, height: config.canvas.width } })}
+              className="text-gray-400 hover:text-gray-700 px-1 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 rounded"
+              title="Swap orientation"
+              aria-label="Swap canvas width and height"
+            >⇄</button>
             <NumberField
               value={config.canvas.height}
               min={64}
