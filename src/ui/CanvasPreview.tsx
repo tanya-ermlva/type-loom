@@ -21,8 +21,8 @@ export const CanvasPreview = forwardRef<HTMLCanvasElement>((_props, ref) => {
     canvas.height = config.canvas.height;
 
     const layoutCells = computeLayout(config);
-    const columns = Math.floor(config.canvas.width / config.hDistance);
-    const rows = Math.floor(config.canvas.height / config.vDistance);
+    const rows = Math.floor(config.canvas.height / config.rowSpacing);
+    const columns = rows > 0 ? layoutCells.length / rows : 0;
     const finalCells = runPipeline(layoutCells, treatments, {
       config, rows, columns, t: 0,
     });

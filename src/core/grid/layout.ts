@@ -1,26 +1,35 @@
 import type { BaseGridConfig, Cell } from '../types';
-import { fillRow } from './input';
 
 /**
  * Compute the baseline grid layout from the base config.
+ *
+ * Per-row flow: each row is filled with the input word, repeated.
+ * Within a word, letters are spaced by `charSpacing`. Between word
+ * repetitions, an additional `columnSpacing` gap is inserted.
+ *
  * Returns one Cell per (row, column) position with character resolved
  * from the input and identity rendering values.
  */
 export function computeLayout(config: BaseGridConfig): Cell[] {
-  const { canvas, hDistance, vDistance, input, fgColor } = config;
-  const columns = Math.floor(canvas.width / hDistance);
-  const rows = Math.floor(canvas.height / vDistance);
+  const { canvas, charSpacing, columnSpacing, rowSpacing, input, fgColor } = config;
   const cells: Cell[] = [];
+  if (input.length === 0 || charSpacing <= 0 || rowSpacing <= 0) return cells;
+
+  const wordWidth = input.length * charSpacing;
+  const period = wordWidth + columnSpacing;
+  const numWords = Math.max(1, Math.floor(canvas.width / period));
+  const columns = numWords * input.length;
+  const rows = Math.floor(canvas.height / rowSpacing);
 
   for (let r = 0; r < rows; r++) {
-    const rowText = fillRow(input, columns);
     for (let c = 0; c < columns; c++) {
+      const wordIndex = Math.floor(c / input.length);
+      const charIndexInWord = c % input.length;
+      const x = wordIndex * period + charIndexInWord * charSpacing + charSpacing / 2;
+      const y = r * rowSpacing + rowSpacing / 2;
       cells.push({
-        char: rowText[c] ?? ' ',
-        position: {
-          x: c * hDistance + hDistance / 2,
-          y: r * vDistance + vDistance / 2,
-        },
+        char: input[charIndexInWord],
+        position: { x, y },
         scale: 1,
         rotation: 0,
         color: fgColor,

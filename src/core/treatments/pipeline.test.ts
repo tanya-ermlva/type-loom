@@ -4,7 +4,7 @@ import type { Treatment } from './types';
 import { DEFAULT_BASE_CONFIG, type Cell } from '../types';
 import { computeLayout } from '../grid/layout';
 
-const cfg = { ...DEFAULT_BASE_CONFIG, canvas: { width: 100, height: 100 }, hDistance: 20, vDistance: 20, input: 'A' };
+const cfg = { ...DEFAULT_BASE_CONFIG, canvas: { width: 100, height: 100 }, charSpacing: 20, columnSpacing: 0, rowSpacing: 20, input: 'A' };
 
 const makeCells = (): Cell[] => computeLayout(cfg);
 

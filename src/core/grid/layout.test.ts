@@ -14,34 +14,60 @@ describe('computeLayout', () => {
     }
   });
 
-  it('computes the expected number of rows and columns from canvas size', () => {
-    const config = { ...DEFAULT_BASE_CONFIG, canvas: { width: 100, height: 100 }, hDistance: 20, vDistance: 25, input: 'A' };
+  it('produces cells = wordsPerRow * input.length * rows', () => {
+    const config = {
+      ...DEFAULT_BASE_CONFIG,
+      canvas: { width: 200, height: 100 },
+      charSpacing: 20, columnSpacing: 20, rowSpacing: 50,
+      input: 'OK',
+    };
+    // word_width = 2*20 = 40. period = 60. wordsPerRow = floor(200/60) = 3.
+    // columns = 3*2 = 6. rows = floor(100/50) = 2. total = 12 cells.
     const cells = computeLayout(config);
-    // 100/20 = 5 cols, 100/25 = 4 rows -> 20 cells
-    expect(cells.length).toBe(20);
+    expect(cells.length).toBe(12);
   });
 
-  it('starts cells at half-cell offset so they sit centered', () => {
-    const config = { ...DEFAULT_BASE_CONFIG, canvas: { width: 100, height: 100 }, hDistance: 20, vDistance: 20, input: 'A' };
+  it('positions letters within a word adjacent (no gap within word)', () => {
+    const config = {
+      ...DEFAULT_BASE_CONFIG,
+      canvas: { width: 200, height: 50 },
+      charSpacing: 20, columnSpacing: 20, rowSpacing: 50,
+      input: 'OK',
+    };
     const cells = computeLayout(config);
-    expect(cells[0].position.x).toBe(10); // half of 20
-    expect(cells[0].position.y).toBe(10);
+    // First word: O at x=10, K at x=30 (charSpacing apart)
+    expect(cells[0].position.x).toBe(10);
+    expect(cells[1].position.x).toBe(30);
+    // Second word starts at period + charSpacing/2 = 60 + 10 = 70
+    expect(cells[2].position.x).toBe(70);
+    expect(cells[3].position.x).toBe(90);
   });
 
-  it('assigns the right character to each cell using fillRow per row', () => {
-    const config = { ...DEFAULT_BASE_CONFIG, canvas: { width: 80, height: 40 }, hDistance: 20, vDistance: 20, input: 'OK' };
+  it('repeats the input word in correct order across the row', () => {
+    const config = {
+      ...DEFAULT_BASE_CONFIG,
+      canvas: { width: 200, height: 100 },
+      charSpacing: 20, columnSpacing: 20, rowSpacing: 50,
+      input: 'OK',
+    };
     const cells = computeLayout(config);
-    // 4 cols, 2 rows. Row content = "OK O" (truncated to 4 chars).
-    expect(cells.slice(0, 4).map(c => c.char)).toEqual(['O', 'K', ' ', 'O']);
-    expect(cells.slice(4, 8).map(c => c.char)).toEqual(['O', 'K', ' ', 'O']);
+    // 6 cells per row. Row 1 chars:
+    expect(cells.slice(0, 6).map(c => c.char)).toEqual(['O', 'K', 'O', 'K', 'O', 'K']);
+    // Row 2 chars same:
+    expect(cells.slice(6, 12).map(c => c.char)).toEqual(['O', 'K', 'O', 'K', 'O', 'K']);
   });
 
-  it('initializes each cell with identity values (visible, scale 1, etc)', () => {
+  it('initializes each cell with identity render values', () => {
     const cells = computeLayout(DEFAULT_BASE_CONFIG);
     expect(cells[0].scale).toBe(1);
     expect(cells[0].rotation).toBe(0);
     expect(cells[0].opacity).toBe(1);
     expect(cells[0].visible).toBe(true);
     expect(cells[0].color).toBe(DEFAULT_BASE_CONFIG.fgColor);
+  });
+
+  it('returns no cells when input is empty', () => {
+    const config = { ...DEFAULT_BASE_CONFIG, input: '' };
+    expect(computeLayout(config)).toEqual([]);
   });
 });

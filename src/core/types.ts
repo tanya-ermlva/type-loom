@@ -34,22 +34,24 @@ export const IDENTITY_CELL: Omit<Cell, 'char' | 'position'> = {
 
 // Configuration for the base grid
 export interface BaseGridConfig {
-  canvas: Size;            // canvas dimensions in px
-  charSize: number;        // font size in px
-  vDistance: number;       // line height in px
-  hDistance: number;       // cell width in px (monospace)
-  flow: 'per-row';         // v0.1 only supports per-row
+  canvas: Size;             // canvas dimensions in px
+  charSize: number;         // font size in px
+  rowSpacing: number;       // vertical px between rows (line height)
+  charSpacing: number;      // horizontal px between letters within a word ("T" -> "Y")
+  columnSpacing: number;    // horizontal px gap between word repetitions ("TYPE" -> "TYPE")
+  flow: 'per-row';          // v0.1 only supports per-row
   fgColor: string;
   bgColor: string;
   input: string;
-  fontFamily: string;      // system font name (custom upload deferred)
+  fontFamily: string;       // system font name (custom upload deferred)
 }
 
 export const DEFAULT_BASE_CONFIG: BaseGridConfig = {
   canvas: { width: 1080, height: 1080 },
   charSize: 40,
-  vDistance: 50,
-  hDistance: 42,
+  rowSpacing: 50,
+  charSpacing: 30,
+  columnSpacing: 20,
   flow: 'per-row',
   fgColor: '#1a1a4d',
   bgColor: '#f0ead6',
