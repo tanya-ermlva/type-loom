@@ -2,6 +2,12 @@ import { create } from 'zustand';
 import { DEFAULT_BASE_CONFIG, type BaseGridConfig } from '../core/types';
 import type { Treatment } from '../core/treatments/types';
 import type { AnimationSpec } from '../core/animation/types';
+import { pickRandomPalette } from '../core/palettes';
+
+function makeInitialConfig(): BaseGridConfig {
+  const palette = pickRandomPalette();
+  return { ...DEFAULT_BASE_CONFIG, fgColor: palette.fg, bgColor: palette.bg };
+}
 
 interface StoreState {
   config: BaseGridConfig;
@@ -29,11 +35,12 @@ interface StoreState {
   setCurrentTime: (t: number) => void;
   setLoopDuration: (d: number) => void;
 
+  randomizePalette: () => void;
   reset: () => void;
 }
 
 export const useStore = create<StoreState>((set) => ({
-  config: { ...DEFAULT_BASE_CONFIG },
+  config: makeInitialConfig(),
   treatments: [],
   animations: [],
 
@@ -71,6 +78,12 @@ export const useStore = create<StoreState>((set) => ({
   setPlaying: (b) => set({ isPlaying: b }),
   setCurrentTime: (t) => set({ currentTime: t }),
   setLoopDuration: (d) => set({ loopDuration: Math.max(0.1, d) }),
+
+  randomizePalette: () =>
+    set((s) => {
+      const p = pickRandomPalette();
+      return { config: { ...s.config, fgColor: p.fg, bgColor: p.bg } };
+    }),
 
   reset: () =>
     set({

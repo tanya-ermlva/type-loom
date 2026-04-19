@@ -24,6 +24,8 @@ export function TopBar({ canvasRef }: TopBarProps) {
   const menuRef = useRef<HTMLDivElement>(null);
 
   const mp4Supported = pickMimeType('mp4') !== null;
+  const hasAnimations = animations.length > 0;
+  const noAnimReason = 'Add at least one animation in a treatment to enable this export.';
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -100,17 +102,27 @@ export function TopBar({ canvasRef }: TopBarProps) {
             <button onClick={handleExportPng} className="block w-full text-left px-3 py-2 hover:bg-gray-100 border-b border-gray-100">
               PNG <span className="text-gray-400 text-xs">(current frame)</span>
             </button>
-            <button onClick={handleExportSequence} className="block w-full text-left px-3 py-2 hover:bg-gray-100 border-b border-gray-100">
+            <button
+              onClick={handleExportSequence}
+              disabled={!hasAnimations}
+              className="block w-full text-left px-3 py-2 hover:bg-gray-100 border-b border-gray-100 disabled:text-gray-300 disabled:cursor-not-allowed"
+              title={hasAnimations ? '' : noAnimReason}
+            >
               PNG sequence <span className="text-gray-400 text-xs">(.zip, full loop)</span>
             </button>
-            <button onClick={() => handleExportVideo('webm')} className="block w-full text-left px-3 py-2 hover:bg-gray-100">
+            <button
+              onClick={() => handleExportVideo('webm')}
+              disabled={!hasAnimations}
+              className="block w-full text-left px-3 py-2 hover:bg-gray-100 disabled:text-gray-300 disabled:cursor-not-allowed"
+              title={hasAnimations ? '' : noAnimReason}
+            >
               WebM <span className="text-gray-400 text-xs">(VP9)</span>
             </button>
             <button
               onClick={() => handleExportVideo('mp4')}
-              disabled={!mp4Supported}
+              disabled={!mp4Supported || !hasAnimations}
               className="block w-full text-left px-3 py-2 hover:bg-gray-100 disabled:text-gray-300 disabled:cursor-not-allowed"
-              title={mp4Supported ? '' : 'Not supported in this browser — use WebM or PNG sequence + ffmpeg'}
+              title={!mp4Supported ? 'Not supported in this browser — use WebM or PNG sequence + ffmpeg' : hasAnimations ? '' : noAnimReason}
             >
               MP4 <span className="text-gray-400 text-xs">(H.264{mp4Supported ? '' : ', unsupported'})</span>
             </button>

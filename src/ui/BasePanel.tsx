@@ -5,6 +5,7 @@ import { ColorSwatch } from './controls/ColorSwatch';
 export function BasePanel() {
   const config = useStore((s) => s.config);
   const updateConfig = useStore((s) => s.updateConfig);
+  const randomizePalette = useStore((s) => s.randomizePalette);
 
   return (
     <aside className="w-64 border-r border-gray-200 p-4 overflow-y-auto bg-white">
@@ -48,6 +49,16 @@ export function BasePanel() {
         />
 
         <div className="pt-2 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-gray-400 uppercase tracking-wider">Colors</span>
+            <button
+              onClick={randomizePalette}
+              className="text-xs text-blue-600 hover:underline"
+              title="Pick a random color pair from the palette"
+            >
+              🎲 Randomize
+            </button>
+          </div>
           <ColorSwatch label="FG" value={config.fgColor} onChange={(v) => updateConfig({ fgColor: v })} />
           <ColorSwatch label="BG" value={config.bgColor} onChange={(v) => updateConfig({ bgColor: v })} />
         </div>
