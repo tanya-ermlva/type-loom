@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useStore } from '../state/store';
 import type { TreatmentType } from '../core/treatments/types';
-import type { AnimationSpec, AnimationCurve } from '../core/animation/types';
+import type { AnimationSpec, AnimationCurve, StaggerAxis } from '../core/animation/types';
 
 interface AnimationsListProps {
   treatmentId: string;
@@ -44,6 +44,8 @@ export function AnimationsList({
       curve: 'sine',
       duration: 4,
       delay: 0,
+      staggerAmount: 0,
+      staggerAxis: 'x',
     };
     addAnimation(spec);
     setAdding(false);
@@ -148,6 +150,32 @@ export function AnimationsList({
                   onChange={(e) => updateAnimation(a.id, { duration: Math.max(0.1, Number(e.target.value)) })}
                   className="w-full border border-gray-300 rounded px-1 py-0.5"
                 />
+              </label>
+              <label className="block">
+                <div className="text-gray-500">stagger (s)</div>
+                <input
+                  type="number"
+                  step={0.1}
+                  min={0}
+                  value={a.staggerAmount}
+                  onChange={(e) => updateAnimation(a.id, { staggerAmount: Math.max(0, Number(e.target.value)) })}
+                  className="w-full border border-gray-300 rounded px-1 py-0.5"
+                  title="Per-cell time offset across the grid. 0 = no stagger (all cells in unison)."
+                />
+              </label>
+              <label className="block">
+                <div className="text-gray-500">stagger axis</div>
+                <select
+                  value={a.staggerAxis}
+                  onChange={(e) => updateAnimation(a.id, { staggerAxis: e.target.value as StaggerAxis })}
+                  disabled={a.staggerAmount === 0}
+                  className="w-full border border-gray-300 rounded px-1 py-0.5 disabled:opacity-50"
+                >
+                  <option value="x">x</option>
+                  <option value="y">y</option>
+                  <option value="radial">radial</option>
+                  <option value="diagonal">diagonal</option>
+                </select>
               </label>
             </div>
           </div>

@@ -1,4 +1,33 @@
-import type { AnimationSpec } from './types';
+import type { AnimationSpec, StaggerAxis } from './types';
+
+/**
+ * Compute the per-cell stagger fraction (0..1) for the given (row, col)
+ * within a grid of (rows, columns).
+ */
+export function staggerFraction(
+  row: number,
+  col: number,
+  rows: number,
+  columns: number,
+  axis: StaggerAxis,
+): number {
+  switch (axis) {
+    case 'x':
+      return columns <= 1 ? 0 : col / (columns - 1);
+    case 'y':
+      return rows <= 1 ? 0 : row / (rows - 1);
+    case 'radial': {
+      const nx = columns <= 1 ? 0 : (col / (columns - 1)) * 2 - 1;
+      const ny = rows <= 1 ? 0 : (row / (rows - 1)) * 2 - 1;
+      return Math.min(1, Math.sqrt(nx * nx + ny * ny) / Math.SQRT2);
+    }
+    case 'diagonal': {
+      const xf = columns <= 1 ? 0 : col / (columns - 1);
+      const yf = rows <= 1 ? 0 : row / (rows - 1);
+      return (xf + yf) / 2;
+    }
+  }
+}
 
 /**
  * Evaluate the current value of an animated parameter at time `t` (seconds).

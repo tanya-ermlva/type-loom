@@ -1,11 +1,8 @@
 import { useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { useStore } from '../state/store';
 import { computeLayout } from '../core/grid/layout';
-import { runPipeline } from '../core/treatments/pipeline';
+import { runAnimatedPipeline } from '../core/treatments/animatedPipeline';
 import { renderToCanvas } from '../core/render/canvas';
-import { evaluateAnimation } from '../core/animation/evaluate';
-import { recreateTreatment, type TreatmentParams } from '../core/treatments/factory';
-import type { Treatment } from '../core/treatments/types';
 
 export const CanvasPreview = forwardRef<HTMLCanvasElement>((_props, ref) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -30,23 +27,10 @@ export const CanvasPreview = forwardRef<HTMLCanvasElement>((_props, ref) => {
     canvas.width = config.canvas.width;
     canvas.height = config.canvas.height;
 
-    // Apply animated values to each treatment's params before running pipeline.
-    const animatedTreatments: Treatment[] = treatments.map((t) => {
-      const animsForThis = animations.filter((a) => a.treatmentId === t.id);
-      if (animsForThis.length === 0) return t;
-      const baseParams = (t as Treatment & { params?: TreatmentParams }).params;
-      if (!baseParams) return t;
-      const newParams = { ...baseParams } as Record<string, unknown>;
-      for (const anim of animsForThis) {
-        newParams[anim.paramKey] = evaluateAnimation(anim, currentTime);
-      }
-      return recreateTreatment(t.type, newParams as unknown as TreatmentParams, t.id, t.enabled);
-    });
-
     const layoutCells = computeLayout(config);
     const rows = Math.floor(config.canvas.height / config.rowSpacing);
     const columns = rows > 0 ? layoutCells.length / rows : 0;
-    const finalCells = runPipeline(layoutCells, animatedTreatments, {
+    const finalCells = runAnimatedPipeline(layoutCells, treatments, animations, {
       config, rows, columns, t: currentTime,
     });
 

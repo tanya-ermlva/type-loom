@@ -5,6 +5,7 @@ import type { AnimationSpec } from './types';
 const base: Omit<AnimationSpec, 'curve'> = {
   id: 'a', treatmentId: 't', treatmentType: 'silhouette',
   paramKey: 'size', from: 0, to: 1, duration: 4, delay: 0,
+  staggerAmount: 0, staggerAxis: 'x',
 };
 
 describe('evaluateAnimation', () => {

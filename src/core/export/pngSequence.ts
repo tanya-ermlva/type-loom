@@ -3,10 +3,8 @@ import type { BaseGridConfig } from '../types';
 import type { Treatment } from '../treatments/types';
 import type { AnimationSpec } from '../animation/types';
 import { computeLayout } from '../grid/layout';
-import { runPipeline } from '../treatments/pipeline';
+import { runAnimatedPipeline } from '../treatments/animatedPipeline';
 import { renderToCanvas } from '../render/canvas';
-import { evaluateAnimation } from '../animation/evaluate';
-import { recreateTreatment, type TreatmentParams } from '../treatments/factory';
 
 export interface PngSequenceOptions {
   config: BaseGridConfig;
@@ -40,23 +38,10 @@ export async function exportPngSequence(opts: PngSequenceOptions): Promise<void>
   for (let i = 0; i < totalFrames; i++) {
     const t = totalFrames === 1 ? 0 : (i / totalFrames) * loopDuration;
 
-    // Apply animated values to each treatment's params.
-    const animatedTreatments: Treatment[] = treatments.map((tr) => {
-      const animsForThis = animations.filter((a) => a.treatmentId === tr.id);
-      if (animsForThis.length === 0) return tr;
-      const baseParams = (tr as Treatment & { params?: TreatmentParams }).params;
-      if (!baseParams) return tr;
-      const newParams = { ...baseParams } as Record<string, unknown>;
-      for (const anim of animsForThis) {
-        newParams[anim.paramKey] = evaluateAnimation(anim, t);
-      }
-      return recreateTreatment(tr.type, newParams as unknown as TreatmentParams, tr.id, tr.enabled);
-    });
-
     const layoutCells = computeLayout(config);
     const rows = Math.floor(config.canvas.height / config.rowSpacing);
     const columns = rows > 0 ? layoutCells.length / rows : 0;
-    const finalCells = runPipeline(layoutCells, animatedTreatments, {
+    const finalCells = runAnimatedPipeline(layoutCells, treatments, animations, {
       config, rows, columns, t,
     });
 
