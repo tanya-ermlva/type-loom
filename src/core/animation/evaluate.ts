@@ -65,10 +65,36 @@ export function evaluateAnimation(spec: AnimationSpec, t: number): number {
 }
 
 /**
- * Compute the suggested loop duration: max of all active animation durations.
- * Returns a sensible default (4s) when no animations are active.
+ * Compute the smallest seamless loop duration: the LCM of all active
+ * animation durations. Because each cell's phase is purely a function of
+ * `t % duration`, the loop wraps without visible jumps as long as
+ * `loopDuration` is a multiple of every animation's `duration`.
+ *
+ * Stagger doesn't enter the calculation — it shifts per-cell *phase*, but
+ * the per-cell phase repeats every `duration` regardless of stagger.
+ *
+ * Float durations are quantized to 0.05s before LCM so the math stays
+ * stable. Returns 4s when no animations are active.
  */
 export function computeLoopDuration(specs: AnimationSpec[]): number {
   if (specs.length === 0) return 4;
-  return Math.max(...specs.map((s) => s.duration));
+  const PRECISION = 20; // units per second (0.05s granularity)
+  const ints = specs.map((s) => Math.max(1, Math.round(s.duration * PRECISION)));
+  let result = ints[0];
+  for (let i = 1; i < ints.length; i++) {
+    result = lcm(result, ints[i]);
+    if (!Number.isFinite(result)) return Math.max(...specs.map((s) => s.duration));
+  }
+  return result / PRECISION;
+}
+
+function gcd(a: number, b: number): number {
+  while (b !== 0) {
+    [a, b] = [b, a % b];
+  }
+  return a;
+}
+
+function lcm(a: number, b: number): number {
+  return (a / gcd(a, b)) * b;
 }
