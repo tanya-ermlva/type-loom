@@ -19,7 +19,9 @@ export function usePlaybackLoop(): void {
     const tick = (now: number) => {
       const dt = (now - lastTime) / 1000;
       lastTime = now;
-      const next = (useStore.getState().currentTime + dt) % Math.max(0.1, loopDuration);
+      // Read playbackSpeed live each frame so changes take effect immediately.
+      const speed = useStore.getState().playbackSpeed;
+      const next = (useStore.getState().currentTime + dt * speed) % Math.max(0.1, loopDuration);
       setCurrentTime(next);
       rafId = requestAnimationFrame(tick);
     };

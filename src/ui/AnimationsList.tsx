@@ -187,7 +187,7 @@ export function AnimationsList({
               />
               <Slider
                 label="duration (s)" value={a.duration}
-                min={0.1} max={20} step={0.1}
+                min={0.1} max={60} step={0.1}
                 onChange={(v) => updateAnimation(a.id, { duration: Math.max(0.1, v) })}
               />
               {treatmentId !== 'config' && (

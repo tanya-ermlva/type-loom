@@ -6,10 +6,12 @@ export function Timeline() {
   const isPlaying = useStore((s) => s.isPlaying);
   const currentTime = useStore((s) => s.currentTime);
   const loopDuration = useStore((s) => s.loopDuration);
+  const playbackSpeed = useStore((s) => s.playbackSpeed);
   const animations = useStore((s) => s.animations);
   const setPlaying = useStore((s) => s.setPlaying);
   const setCurrentTime = useStore((s) => s.setCurrentTime);
   const setLoopDuration = useStore((s) => s.setLoopDuration);
+  const setPlaybackSpeed = useStore((s) => s.setPlaybackSpeed);
 
   const suggestedLoop = computeLoopDuration(animations);
 
@@ -45,6 +47,25 @@ export function Timeline() {
       <div className="text-xs text-gray-500 tabular-nums w-20 text-right">
         {currentTime.toFixed(2)}s / {loopDuration.toFixed(2)}s
       </div>
+
+      <label className="text-xs text-gray-500 flex items-center gap-1">
+        speed
+        <select
+          value={String(playbackSpeed)}
+          onChange={(e) => setPlaybackSpeed(Number(e.target.value))}
+          className="border border-gray-300 rounded px-1 py-0.5 text-xs bg-white focus:outline-none focus:border-blue-400"
+          title="Playback speed multiplier"
+        >
+          <option value="0.1">0.1×</option>
+          <option value="0.25">0.25×</option>
+          <option value="0.5">0.5×</option>
+          <option value="0.75">0.75×</option>
+          <option value="1">1×</option>
+          <option value="1.5">1.5×</option>
+          <option value="2">2×</option>
+          <option value="4">4×</option>
+        </select>
+      </label>
 
       <label className="text-xs text-gray-500 flex items-center gap-1">
         loop
