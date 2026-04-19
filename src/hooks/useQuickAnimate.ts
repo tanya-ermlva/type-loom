@@ -2,18 +2,15 @@ import { useStore } from '../state/store';
 import type { TreatmentType } from '../core/treatments/types';
 
 /**
- * Hook that returns a `quickAnimate(paramKey, fromValue, toValue)` function
- * for a given treatment. Calling it adds (or replaces) an animation on
- * that param: a 4-second sine cycle between fromValue and toValue, no
- * stagger. Powers the ✨ button on slider rows.
+ * Hook returning a `quickAnimate(paramKey, fromValue, toValue)` function.
+ * Pass `treatmentType: undefined` for config animations (treatmentId === 'config').
  */
-export function useQuickAnimate(treatmentId: string, treatmentType: TreatmentType) {
+export function useQuickAnimate(treatmentId: string, treatmentType?: TreatmentType) {
   const animations = useStore((s) => s.animations);
   const addAnimation = useStore((s) => s.addAnimation);
   const removeAnimation = useStore((s) => s.removeAnimation);
 
   return (paramKey: string, fromValue: number, toValue: number) => {
-    // Replace any existing animation on this exact param.
     animations
       .filter((a) => a.treatmentId === treatmentId && a.paramKey === paramKey)
       .forEach((a) => removeAnimation(a.id));
