@@ -35,11 +35,11 @@ export function BasePanel() {
           onChange={(v) => updateConfig({ charSize: v })}
         />
         <Slider
-          label="V-distance" value={config.vDistance} min={4} max={200}
+          label="Row spacing" value={config.vDistance} min={4} max={200}
           onChange={(v) => updateConfig({ vDistance: v })}
         />
         <Slider
-          label="H-distance" value={config.hDistance} min={4} max={200}
+          label="Letter spacing" value={config.hDistance} min={4} max={200}
           onChange={(v) => updateConfig({ hDistance: v })}
         />
 
