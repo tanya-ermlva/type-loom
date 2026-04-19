@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useStore } from '../state/store';
+import { NumberField } from './controls/NumberField';
 import type { TreatmentType } from '../core/treatments/types';
 import type { AnimationSpec, AnimationCurve, StaggerAxis } from '../core/animation/types';
 import type { MaskParams } from '../core/mask/types';
@@ -146,22 +147,22 @@ export function AnimationsList({
             <div className="grid grid-cols-2 gap-1.5">
               <label className="block">
                 <div className="text-gray-500">from</div>
-                <input
-                  type="number"
-                  step={0.01}
+                <NumberField
                   value={a.from}
-                  onChange={(e) => updateAnimation(a.id, { from: Number(e.target.value) })}
+                  step={0.01}
+                  onChange={(v) => updateAnimation(a.id, { from: v })}
                   className="w-full border border-gray-300 rounded px-1 py-0.5"
+                  ariaLabel="from"
                 />
               </label>
               <label className="block">
                 <div className="text-gray-500">to</div>
-                <input
-                  type="number"
-                  step={0.01}
+                <NumberField
                   value={a.to}
-                  onChange={(e) => updateAnimation(a.id, { to: Number(e.target.value) })}
+                  step={0.01}
+                  onChange={(v) => updateAnimation(a.id, { to: v })}
                   className="w-full border border-gray-300 rounded px-1 py-0.5"
+                  ariaLabel="to"
                 />
               </label>
               <label className="block">
@@ -179,24 +180,24 @@ export function AnimationsList({
               </label>
               <label className="block">
                 <div className="text-gray-500">duration (s)</div>
-                <input
-                  type="number"
+                <NumberField
+                  value={a.duration}
                   step={0.1}
                   min={0.1}
-                  value={a.duration}
-                  onChange={(e) => updateAnimation(a.id, { duration: Math.max(0.1, Number(e.target.value)) })}
+                  onChange={(v) => updateAnimation(a.id, { duration: Math.max(0.1, v) })}
                   className="w-full border border-gray-300 rounded px-1 py-0.5"
+                  ariaLabel="duration in seconds"
                 />
               </label>
               <label className="block">
                 <div className="text-gray-500">stagger (s)</div>
-                <input
-                  type="number"
+                <NumberField
+                  value={a.staggerAmount}
                   step={0.1}
                   min={0}
-                  value={a.staggerAmount}
-                  onChange={(e) => updateAnimation(a.id, { staggerAmount: Math.max(0, Number(e.target.value)) })}
+                  onChange={(v) => updateAnimation(a.id, { staggerAmount: Math.max(0, v) })}
                   className="w-full border border-gray-300 rounded px-1 py-0.5"
+                  ariaLabel="stagger in seconds"
                   title="Per-cell time offset across the grid. 0 = no stagger (all cells in unison)."
                 />
               </label>

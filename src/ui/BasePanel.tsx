@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useStore } from '../state/store';
 import { Slider } from './controls/Slider';
 import { ColorSwatch } from './controls/ColorSwatch';
+import { NumberField } from './controls/NumberField';
 import { loadFontFile, displayFontName } from '../core/font/loader';
 import { DEFAULT_BASE_CONFIG } from '../core/types';
 
@@ -70,19 +71,25 @@ export function BasePanel() {
 
         <div>
           <div className="text-sm text-gray-700 mb-1">Canvas size</div>
-          <div className="flex gap-2">
-            <input
-              type="number"
+          <div className="flex gap-2 items-center">
+            <NumberField
               value={config.canvas.width}
-              onChange={(e) => updateConfig({ canvas: { ...config.canvas, width: Number(e.target.value) } })}
+              min={64}
+              max={8000}
+              step={1}
+              onChange={(v) => updateConfig({ canvas: { ...config.canvas, width: v } })}
               className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+              ariaLabel="Canvas width"
             />
-            <span className="self-center text-gray-400">×</span>
-            <input
-              type="number"
+            <span className="text-gray-400">×</span>
+            <NumberField
               value={config.canvas.height}
-              onChange={(e) => updateConfig({ canvas: { ...config.canvas, height: Number(e.target.value) } })}
+              min={64}
+              max={8000}
+              step={1}
+              onChange={(v) => updateConfig({ canvas: { ...config.canvas, height: v } })}
               className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+              ariaLabel="Canvas height"
             />
           </div>
         </div>

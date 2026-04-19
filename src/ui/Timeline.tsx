@@ -1,5 +1,6 @@
 import { useStore } from '../state/store';
 import { computeLoopDuration } from '../core/animation/evaluate';
+import { NumberField } from './controls/NumberField';
 
 export function Timeline() {
   const isPlaying = useStore((s) => s.isPlaying);
@@ -47,18 +48,18 @@ export function Timeline() {
 
       <label className="text-xs text-gray-500 flex items-center gap-1">
         loop
-        <input
-          type="number"
+        <NumberField
+          value={loopDuration}
           step={0.5}
           min={0.1}
-          value={loopDuration}
-          onChange={(e) => setLoopDuration(Number(e.target.value))}
+          onChange={setLoopDuration}
           className="w-16 border border-gray-300 rounded px-1 py-0.5 text-xs"
+          ariaLabel="Loop duration in seconds"
         />
         <button
           onClick={() => setLoopDuration(suggestedLoop)}
           className="text-xs text-blue-600 hover:underline"
-          title="Reset to longest animation duration"
+          title="Snap to LCM of all animation durations (seamless loop)"
         >
           auto
         </button>
