@@ -21,14 +21,25 @@ export function Slider({ label, value, min, max, step = 1, onChange }: SliderPro
   const id = useId();
   const clamp = (v: number) => Math.max(min, Math.min(max, v));
 
-  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+  // Shift+Arrow on the range slider: browser's default already moves by 1×step,
+  // we top it up by 9× more to land on a 10× shift.
+  const handleRangeKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (!e.shiftKey) return;
     let delta = 0;
     if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') delta = -step * 9;
     else if (e.key === 'ArrowRight' || e.key === 'ArrowUp') delta = step * 9;
-    if (delta !== 0) {
-      // Browser already moved by 1×step; we add 9× more to land on a clean 10× shift.
-      onChange(clamp(value + delta));
+    if (delta !== 0) onChange(clamp(value + delta));
+  };
+
+  // Shift+Arrow on the number input: prevent browser default (±1) and apply ±10×.
+  const handleNumberKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (!e.shiftKey) return;
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      onChange(clamp(value + step * 10));
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      onChange(clamp(value - step * 10));
     }
   };
 
@@ -43,7 +54,9 @@ export function Slider({ label, value, min, max, step = 1, onChange }: SliderPro
           max={max}
           value={value}
           onChange={(e) => onChange(clamp(Number(e.target.value)))}
+          onKeyDown={handleNumberKeyDown}
           className="w-16 text-right border border-transparent hover:border-gray-300 focus:border-blue-400 focus:outline-none rounded px-1 text-gray-700 tabular-nums text-xs"
+          title="Arrow keys: ±1 step. Shift+Arrow: ±10 steps."
         />
       </div>
       <input
@@ -54,7 +67,7 @@ export function Slider({ label, value, min, max, step = 1, onChange }: SliderPro
         step={step}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        onKeyDown={handleKeyDown}
+        onKeyDown={handleRangeKeyDown}
         className="w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 rounded"
         title="Arrow keys: ±1 step. Shift+Arrow: ±10 steps."
       />

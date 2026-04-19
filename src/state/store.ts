@@ -19,6 +19,9 @@ interface StoreState {
   currentTime: number;     // seconds, wrapped within loopDuration
   loopDuration: number;    // seconds — auto from animations or user-set
 
+  // UI prefs
+  showMaskOverlays: boolean;
+
   // Config / treatment actions
   updateConfig: (patch: Partial<BaseGridConfig>) => void;
   addTreatment: (t: Treatment) => void;
@@ -35,6 +38,9 @@ interface StoreState {
   setCurrentTime: (t: number) => void;
   setLoopDuration: (d: number) => void;
 
+  // UI prefs actions
+  setShowMaskOverlays: (b: boolean) => void;
+
   randomizePalette: () => void;
   reset: () => void;
 }
@@ -47,6 +53,8 @@ export const useStore = create<StoreState>((set) => ({
   isPlaying: false,
   currentTime: 0,
   loopDuration: 4,
+
+  showMaskOverlays: true,
 
   updateConfig: (patch) =>
     set((s) => ({ config: { ...s.config, ...patch } })),
@@ -78,6 +86,8 @@ export const useStore = create<StoreState>((set) => ({
   setPlaying: (b) => set({ isPlaying: b }),
   setCurrentTime: (t) => set({ currentTime: t }),
   setLoopDuration: (d) => set({ loopDuration: Math.max(0.1, d) }),
+
+  setShowMaskOverlays: (b) => set({ showMaskOverlays: b }),
 
   randomizePalette: () =>
     set((s) => {
