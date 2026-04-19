@@ -1,9 +1,11 @@
 import { useStore } from '../state/store';
 import type { Treatment } from '../core/treatments/types';
 import { createSilhouette, type SilhouetteParams } from '../core/treatments/silhouette';
+import { DEFAULT_SILHOUETTE_PARAMS } from '../core/treatments/defaults';
 import { Slider } from './controls/Slider';
 import { AnimationsList } from './AnimationsList';
 import { MaskControls } from './MaskControls';
+import { useQuickAnimate } from '../hooks/useQuickAnimate';
 
 interface SilhouetteCardProps {
   treatment: Treatment;
@@ -13,6 +15,7 @@ interface SilhouetteCardProps {
 export function SilhouetteCard({ treatment, params }: SilhouetteCardProps) {
   const updateTreatment = useStore((s) => s.updateTreatment);
   const removeTreatment = useStore((s) => s.removeTreatment);
+  const quickAnimate = useQuickAnimate(treatment.id, 'silhouette');
 
   const updateParams = (patch: Partial<SilhouetteParams>) => {
     const nextParams = { ...params, ...patch };
@@ -39,10 +42,12 @@ export function SilhouetteCard({ treatment, params }: SilhouetteCardProps) {
         <Slider
           label="Size" value={params.size} min={0.05} max={1.5} step={0.01}
           onChange={(v) => updateParams({ size: v })}
+          onAnimate={() => quickAnimate('size', DEFAULT_SILHOUETTE_PARAMS.size, params.size)}
         />
         <Slider
           label="Softness" value={params.softness} min={0} max={1} step={0.01}
           onChange={(v) => updateParams({ softness: v })}
+          onAnimate={() => quickAnimate('softness', DEFAULT_SILHOUETTE_PARAMS.softness, params.softness)}
         />
         <label className="flex items-center gap-2 text-sm">
           <input

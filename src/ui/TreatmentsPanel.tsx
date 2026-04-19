@@ -8,6 +8,14 @@ import { createSpacing, type SpacingParams } from '../core/treatments/spacing';
 import { createScale, type ScaleParams } from '../core/treatments/scale';
 import { createRotation, type RotationParams } from '../core/treatments/rotation';
 import { createTint, type TintParams } from '../core/treatments/tint';
+import {
+  DEFAULT_SILHOUETTE_PARAMS,
+  DEFAULT_DRIFT_PARAMS,
+  DEFAULT_SPACING_PARAMS,
+  DEFAULT_SCALE_PARAMS,
+  DEFAULT_ROTATION_PARAMS,
+  DEFAULT_TINT_PARAMS,
+} from '../core/treatments/defaults';
 
 import { SilhouetteCard } from './SilhouetteCard';
 import { DriftCard } from './DriftCard';
@@ -15,17 +23,6 @@ import { SpacingCard } from './SpacingCard';
 import { ScaleCard } from './ScaleCard';
 import { RotationCard } from './RotationCard';
 import { TintCard } from './TintCard';
-
-const DEFAULT_SILHOUETTE_PARAMS: SilhouetteParams = { shape: 'lens', size: 0.7, softness: 0.1, invert: false };
-const DEFAULT_DRIFT_PARAMS: DriftParams = { axis: 'x', amplitude: 30, frequency: 0.4 };
-const DEFAULT_SPACING_PARAMS: SpacingParams = { pattern: 'tight-middle', amplitude: 0.5, frequency: 1 };
-const DEFAULT_SCALE_PARAMS: ScaleParams = { pattern: 'radial', min: 0.5, max: 1.5 };
-const DEFAULT_ROTATION_PARAMS: RotationParams = { pattern: 'radial', minDegrees: -45, maxDegrees: 45 };
-const DEFAULT_TINT_PARAMS: TintParams = {
-  mode: 'opacity', pattern: 'radial',
-  minOpacity: 0.2, maxOpacity: 1,
-  colorA: '#1a1a4d', colorB: '#f0bb44',
-};
 
 const TREATMENT_OPTIONS: Array<{ type: TreatmentType; label: string }> = [
   { type: 'silhouette', label: 'Silhouette' },

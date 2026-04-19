@@ -4,6 +4,8 @@ import { createSpacing, type SpacingParams, type SpacingPattern } from '../core/
 import { Slider } from './controls/Slider';
 import { AnimationsList } from './AnimationsList';
 import { MaskControls } from './MaskControls';
+import { useQuickAnimate } from '../hooks/useQuickAnimate';
+import { DEFAULT_SPACING_PARAMS } from '../core/treatments/defaults';
 
 interface SpacingCardProps {
   treatment: Treatment;
@@ -13,6 +15,7 @@ interface SpacingCardProps {
 export function SpacingCard({ treatment, params }: SpacingCardProps) {
   const updateTreatment = useStore((s) => s.updateTreatment);
   const removeTreatment = useStore((s) => s.removeTreatment);
+  const quickAnimate = useQuickAnimate(treatment.id, 'spacing');
 
   const updateParams = (patch: Partial<SpacingParams>) => {
     const nextParams = { ...params, ...patch };
@@ -48,10 +51,12 @@ export function SpacingCard({ treatment, params }: SpacingCardProps) {
         <Slider
           label="Amplitude" value={params.amplitude} min={0} max={1} step={0.01}
           onChange={(v) => updateParams({ amplitude: v })}
+          onAnimate={() => quickAnimate('amplitude', DEFAULT_SPACING_PARAMS.amplitude, params.amplitude)}
         />
         <Slider
           label="Frequency" value={params.frequency} min={0.1} max={5} step={0.1}
           onChange={(v) => updateParams({ frequency: v })}
+          onAnimate={() => quickAnimate('frequency', DEFAULT_SPACING_PARAMS.frequency, params.frequency)}
         />
         <MaskControls treatment={treatment} />
         <AnimationsList

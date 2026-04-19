@@ -1,0 +1,55 @@
+import type { SilhouetteParams } from './silhouette';
+import type { DriftParams } from './drift';
+import type { SpacingParams } from './spacing';
+import type { ScaleParams } from './scale';
+import type { RotationParams } from './rotation';
+import type { TintParams } from './tint';
+
+/**
+ * Canonical default params for each treatment type.
+ *
+ * Used by:
+ * - TreatmentsPanel when adding a new treatment of a given type.
+ * - Treatment cards as the `from` value when the user clicks the
+ *   "Animate this" (✨) button on a slider.
+ */
+
+export const DEFAULT_SILHOUETTE_PARAMS: SilhouetteParams = {
+  shape: 'lens',
+  size: 0.7,
+  softness: 0.1,
+  invert: false,
+};
+
+export const DEFAULT_DRIFT_PARAMS: DriftParams = {
+  axis: 'x',
+  amplitude: 30,
+  frequency: 0.4,
+};
+
+export const DEFAULT_SPACING_PARAMS: SpacingParams = {
+  pattern: 'tight-middle',
+  amplitude: 0.5,
+  frequency: 1,
+};
+
+export const DEFAULT_SCALE_PARAMS: ScaleParams = {
+  pattern: 'radial',
+  min: 0.5,
+  max: 1.5,
+};
+
+export const DEFAULT_ROTATION_PARAMS: RotationParams = {
+  pattern: 'radial',
+  minDegrees: -45,
+  maxDegrees: 45,
+};
+
+export const DEFAULT_TINT_PARAMS: TintParams = {
+  mode: 'opacity',
+  pattern: 'radial',
+  minOpacity: 0.2,
+  maxOpacity: 1,
+  colorA: '#1a1a4d',
+  colorB: '#f0bb44',
+};

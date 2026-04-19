@@ -4,6 +4,8 @@ import { createScale, type ScaleParams, type ScalePattern } from '../core/treatm
 import { Slider } from './controls/Slider';
 import { AnimationsList } from './AnimationsList';
 import { MaskControls } from './MaskControls';
+import { useQuickAnimate } from '../hooks/useQuickAnimate';
+import { DEFAULT_SCALE_PARAMS } from '../core/treatments/defaults';
 
 interface ScaleCardProps {
   treatment: Treatment;
@@ -13,6 +15,7 @@ interface ScaleCardProps {
 export function ScaleCard({ treatment, params }: ScaleCardProps) {
   const updateTreatment = useStore((s) => s.updateTreatment);
   const removeTreatment = useStore((s) => s.removeTreatment);
+  const quickAnimate = useQuickAnimate(treatment.id, 'scale');
 
   const updateParams = (patch: Partial<ScaleParams>) => {
     const nextParams = { ...params, ...patch };
@@ -48,10 +51,12 @@ export function ScaleCard({ treatment, params }: ScaleCardProps) {
         <Slider
           label="Min scale" value={params.min} min={0.05} max={3} step={0.05}
           onChange={(v) => updateParams({ min: v })}
+          onAnimate={() => quickAnimate('min', DEFAULT_SCALE_PARAMS.min, params.min)}
         />
         <Slider
           label="Max scale" value={params.max} min={0.05} max={3} step={0.05}
           onChange={(v) => updateParams({ max: v })}
+          onAnimate={() => quickAnimate('max', DEFAULT_SCALE_PARAMS.max, params.max)}
         />
         <MaskControls treatment={treatment} />
         <AnimationsList

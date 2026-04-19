@@ -5,6 +5,8 @@ import { Slider } from './controls/Slider';
 import { ColorSwatch } from './controls/ColorSwatch';
 import { AnimationsList } from './AnimationsList';
 import { MaskControls } from './MaskControls';
+import { useQuickAnimate } from '../hooks/useQuickAnimate';
+import { DEFAULT_TINT_PARAMS } from '../core/treatments/defaults';
 
 interface TintCardProps {
   treatment: Treatment;
@@ -14,6 +16,7 @@ interface TintCardProps {
 export function TintCard({ treatment, params }: TintCardProps) {
   const updateTreatment = useStore((s) => s.updateTreatment);
   const removeTreatment = useStore((s) => s.removeTreatment);
+  const quickAnimate = useQuickAnimate(treatment.id, 'tint');
 
   const updateParams = (patch: Partial<TintParams>) => {
     const nextParams = { ...params, ...patch };
@@ -63,10 +66,12 @@ export function TintCard({ treatment, params }: TintCardProps) {
             <Slider
               label="Min opacity" value={params.minOpacity} min={0} max={1} step={0.01}
               onChange={(v) => updateParams({ minOpacity: v })}
+              onAnimate={() => quickAnimate('minOpacity', DEFAULT_TINT_PARAMS.minOpacity, params.minOpacity)}
             />
             <Slider
               label="Max opacity" value={params.maxOpacity} min={0} max={1} step={0.01}
               onChange={(v) => updateParams({ maxOpacity: v })}
+              onAnimate={() => quickAnimate('maxOpacity', DEFAULT_TINT_PARAMS.maxOpacity, params.maxOpacity)}
             />
           </>
         ) : (

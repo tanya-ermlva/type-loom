@@ -8,6 +8,8 @@ interface SliderProps {
   max: number;
   step?: number;
   onChange: (next: number) => void;
+  /** When provided, render a small ✨ button to convert the current value into an animation. */
+  onAnimate?: () => void;
 }
 
 /**
@@ -20,7 +22,7 @@ interface SliderProps {
  * The numeric value to the right is a NumberField — drag it to scrub,
  * click to type, ±1/±10 with arrow keys.
  */
-export function Slider({ label, value, min, max, step = 1, onChange }: SliderProps) {
+export function Slider({ label, value, min, max, step = 1, onChange, onAnimate }: SliderProps) {
   const id = useId();
   const clamp = (v: number) => Math.max(min, Math.min(max, v));
 
@@ -34,8 +36,19 @@ export function Slider({ label, value, min, max, step = 1, onChange }: SliderPro
 
   return (
     <div className="block text-sm">
-      <div className="flex justify-between items-center mb-1 gap-2">
-        <label htmlFor={id} className="text-gray-700 truncate">{label}</label>
+      <div className="flex justify-between items-center mb-1 gap-1">
+        <label htmlFor={id} className="text-gray-700 truncate flex-1">{label}</label>
+        {onAnimate && (
+          <button
+            type="button"
+            onClick={onAnimate}
+            className="text-gray-300 hover:text-blue-500 text-xs leading-none px-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 rounded"
+            title="Animate this from default → current value"
+            aria-label={`Animate ${label}`}
+          >
+            ✨
+          </button>
+        )}
         <NumberField
           value={value}
           step={step}

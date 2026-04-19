@@ -4,6 +4,8 @@ import { createDrift, type DriftParams, type DriftAxis } from '../core/treatment
 import { Slider } from './controls/Slider';
 import { AnimationsList } from './AnimationsList';
 import { MaskControls } from './MaskControls';
+import { useQuickAnimate } from '../hooks/useQuickAnimate';
+import { DEFAULT_DRIFT_PARAMS } from '../core/treatments/defaults';
 
 interface DriftCardProps {
   treatment: Treatment;
@@ -13,6 +15,7 @@ interface DriftCardProps {
 export function DriftCard({ treatment, params }: DriftCardProps) {
   const updateTreatment = useStore((s) => s.updateTreatment);
   const removeTreatment = useStore((s) => s.removeTreatment);
+  const quickAnimate = useQuickAnimate(treatment.id, 'drift');
 
   const updateParams = (patch: Partial<DriftParams>) => {
     const nextParams = { ...params, ...patch };
@@ -48,10 +51,12 @@ export function DriftCard({ treatment, params }: DriftCardProps) {
         <Slider
           label="Amplitude" value={params.amplitude} min={0} max={200} step={1}
           onChange={(v) => updateParams({ amplitude: v })}
+          onAnimate={() => quickAnimate('amplitude', DEFAULT_DRIFT_PARAMS.amplitude, params.amplitude)}
         />
         <Slider
           label="Frequency" value={params.frequency} min={0} max={2} step={0.01}
           onChange={(v) => updateParams({ frequency: v })}
+          onAnimate={() => quickAnimate('frequency', DEFAULT_DRIFT_PARAMS.frequency, params.frequency)}
         />
         <MaskControls treatment={treatment} />
         <AnimationsList

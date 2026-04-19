@@ -4,6 +4,8 @@ import { createRotation, type RotationParams, type RotationPattern } from '../co
 import { Slider } from './controls/Slider';
 import { AnimationsList } from './AnimationsList';
 import { MaskControls } from './MaskControls';
+import { useQuickAnimate } from '../hooks/useQuickAnimate';
+import { DEFAULT_ROTATION_PARAMS } from '../core/treatments/defaults';
 
 interface RotationCardProps {
   treatment: Treatment;
@@ -13,6 +15,7 @@ interface RotationCardProps {
 export function RotationCard({ treatment, params }: RotationCardProps) {
   const updateTreatment = useStore((s) => s.updateTreatment);
   const removeTreatment = useStore((s) => s.removeTreatment);
+  const quickAnimate = useQuickAnimate(treatment.id, 'rotation');
 
   const updateParams = (patch: Partial<RotationParams>) => {
     const nextParams = { ...params, ...patch };
@@ -49,10 +52,12 @@ export function RotationCard({ treatment, params }: RotationCardProps) {
         <Slider
           label="Min degrees" value={params.minDegrees} min={-180} max={180} step={1}
           onChange={(v) => updateParams({ minDegrees: v })}
+          onAnimate={() => quickAnimate('minDegrees', DEFAULT_ROTATION_PARAMS.minDegrees, params.minDegrees)}
         />
         <Slider
           label="Max degrees" value={params.maxDegrees} min={-180} max={180} step={1}
           onChange={(v) => updateParams({ maxDegrees: v })}
+          onAnimate={() => quickAnimate('maxDegrees', DEFAULT_ROTATION_PARAMS.maxDegrees, params.maxDegrees)}
         />
         <MaskControls treatment={treatment} />
         <AnimationsList
