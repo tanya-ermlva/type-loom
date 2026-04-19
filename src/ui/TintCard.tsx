@@ -3,6 +3,7 @@ import type { Treatment } from '../core/treatments/types';
 import { createTint, type TintParams, type TintMode, type TintPattern } from '../core/treatments/tint';
 import { Slider } from './controls/Slider';
 import { ColorSwatch } from './controls/ColorSwatch';
+import { AnimationsList } from './AnimationsList';
 
 interface TintCardProps {
   treatment: Treatment;
@@ -73,6 +74,13 @@ export function TintCard({ treatment, params }: TintCardProps) {
             <ColorSwatch label="To" value={params.colorB} onChange={(v) => updateParams({ colorB: v })} />
           </div>
         )}
+
+        <AnimationsList
+          treatmentId={treatment.id}
+          treatmentType="tint"
+          numericParamKeys={params.mode === 'opacity' ? ['minOpacity', 'maxOpacity'] : []}
+          currentParams={params as unknown as Record<string, unknown>}
+        />
       </div>
     </div>
   );

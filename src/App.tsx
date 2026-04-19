@@ -3,6 +3,7 @@ import { TopBar } from './ui/TopBar';
 import { BasePanel } from './ui/BasePanel';
 import { CanvasPreview } from './ui/CanvasPreview';
 import { TreatmentsPanel } from './ui/TreatmentsPanel';
+import { Timeline } from './ui/Timeline';
 
 export default function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -15,6 +16,7 @@ export default function App() {
         <CanvasPreview ref={canvasRef} />
         <TreatmentsPanel />
       </div>
+      <Timeline />
     </div>
   );
 }

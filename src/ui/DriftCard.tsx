@@ -2,6 +2,7 @@ import { useStore } from '../state/store';
 import type { Treatment } from '../core/treatments/types';
 import { createDrift, type DriftParams, type DriftAxis } from '../core/treatments/drift';
 import { Slider } from './controls/Slider';
+import { AnimationsList } from './AnimationsList';
 
 interface DriftCardProps {
   treatment: Treatment;
@@ -50,6 +51,12 @@ export function DriftCard({ treatment, params }: DriftCardProps) {
         <Slider
           label="Frequency" value={params.frequency} min={0} max={2} step={0.01}
           onChange={(v) => updateParams({ frequency: v })}
+        />
+        <AnimationsList
+          treatmentId={treatment.id}
+          treatmentType="drift"
+          numericParamKeys={['amplitude', 'frequency']}
+          currentParams={params as unknown as Record<string, unknown>}
         />
       </div>
     </div>

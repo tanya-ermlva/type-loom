@@ -1,0 +1,158 @@
+import { useState } from 'react';
+import { useStore } from '../state/store';
+import type { TreatmentType } from '../core/treatments/types';
+import type { AnimationSpec, AnimationCurve } from '../core/animation/types';
+
+interface AnimationsListProps {
+  treatmentId: string;
+  treatmentType: TreatmentType;
+  /** Numeric param keys on this treatment that can be animated. */
+  numericParamKeys: string[];
+  /** Current values, used to seed `from` and `to` when adding. */
+  currentParams: Record<string, unknown>;
+}
+
+/**
+ * UI inside each treatment card for managing animations on that treatment's
+ * numeric parameters. Lists active animations and provides an add-form.
+ */
+export function AnimationsList({
+  treatmentId,
+  treatmentType,
+  numericParamKeys,
+  currentParams,
+}: AnimationsListProps) {
+  const animations = useStore((s) => s.animations);
+  const addAnimation = useStore((s) => s.addAnimation);
+  const removeAnimation = useStore((s) => s.removeAnimation);
+  const updateAnimation = useStore((s) => s.updateAnimation);
+  const [adding, setAdding] = useState(false);
+  const [newKey, setNewKey] = useState(numericParamKeys[0] ?? '');
+
+  const myAnims = animations.filter((a) => a.treatmentId === treatmentId);
+
+  const handleAdd = () => {
+    if (!newKey) return;
+    const seedValue = Number(currentParams[newKey] ?? 0);
+    const spec: AnimationSpec = {
+      id: crypto.randomUUID(),
+      treatmentId,
+      treatmentType,
+      paramKey: newKey,
+      from: seedValue,
+      to: seedValue === 0 ? 1 : seedValue * 2,
+      curve: 'sine',
+      duration: 4,
+      delay: 0,
+    };
+    addAnimation(spec);
+    setAdding(false);
+  };
+
+  return (
+    <div className="border-t border-gray-100 pt-2 mt-2">
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-[11px] uppercase tracking-wider text-gray-400">Animations</span>
+        {!adding && (
+          <button
+            onClick={() => setAdding(true)}
+            className="text-xs text-blue-600 hover:underline"
+          >
+            + Animate
+          </button>
+        )}
+      </div>
+
+      {adding && (
+        <div className="flex gap-1 items-center mb-2">
+          <select
+            value={newKey}
+            onChange={(e) => setNewKey(e.target.value)}
+            className="flex-1 border border-gray-300 rounded px-1 py-0.5 text-xs"
+          >
+            {numericParamKeys.map((k) => (
+              <option key={k} value={k}>{k}</option>
+            ))}
+          </select>
+          <button
+            onClick={handleAdd}
+            className="text-xs px-2 py-0.5 bg-gray-900 text-white rounded"
+          >
+            Add
+          </button>
+          <button
+            onClick={() => setAdding(false)}
+            className="text-xs px-2 py-0.5 text-gray-500 hover:text-gray-800"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {myAnims.length === 0 && !adding && (
+        <p className="text-[11px] text-gray-400">No animations yet.</p>
+      )}
+
+      <div className="space-y-2">
+        {myAnims.map((a) => (
+          <div key={a.id} className="bg-blue-50/40 border border-blue-100 rounded p-2 text-xs">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="font-medium text-gray-800">animating <code className="text-blue-700">{a.paramKey}</code></span>
+              <button
+                onClick={() => removeAnimation(a.id)}
+                className="text-gray-400 hover:text-red-500"
+                aria-label="Remove animation"
+              >✕</button>
+            </div>
+            <div className="grid grid-cols-2 gap-1.5">
+              <label className="block">
+                <div className="text-gray-500">from</div>
+                <input
+                  type="number"
+                  step={0.01}
+                  value={a.from}
+                  onChange={(e) => updateAnimation(a.id, { from: Number(e.target.value) })}
+                  className="w-full border border-gray-300 rounded px-1 py-0.5"
+                />
+              </label>
+              <label className="block">
+                <div className="text-gray-500">to</div>
+                <input
+                  type="number"
+                  step={0.01}
+                  value={a.to}
+                  onChange={(e) => updateAnimation(a.id, { to: Number(e.target.value) })}
+                  className="w-full border border-gray-300 rounded px-1 py-0.5"
+                />
+              </label>
+              <label className="block">
+                <div className="text-gray-500">curve</div>
+                <select
+                  value={a.curve}
+                  onChange={(e) => updateAnimation(a.id, { curve: e.target.value as AnimationCurve })}
+                  className="w-full border border-gray-300 rounded px-1 py-0.5"
+                >
+                  <option value="sine">sine</option>
+                  <option value="ease-in-out">ease-in-out</option>
+                  <option value="triangle">triangle</option>
+                  <option value="sawtooth">sawtooth</option>
+                </select>
+              </label>
+              <label className="block">
+                <div className="text-gray-500">duration (s)</div>
+                <input
+                  type="number"
+                  step={0.1}
+                  min={0.1}
+                  value={a.duration}
+                  onChange={(e) => updateAnimation(a.id, { duration: Math.max(0.1, Number(e.target.value)) })}
+                  className="w-full border border-gray-300 rounded px-1 py-0.5"
+                />
+              </label>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}

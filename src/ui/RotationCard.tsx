@@ -2,6 +2,7 @@ import { useStore } from '../state/store';
 import type { Treatment } from '../core/treatments/types';
 import { createRotation, type RotationParams, type RotationPattern } from '../core/treatments/rotation';
 import { Slider } from './controls/Slider';
+import { AnimationsList } from './AnimationsList';
 
 interface RotationCardProps {
   treatment: Treatment;
@@ -51,6 +52,12 @@ export function RotationCard({ treatment, params }: RotationCardProps) {
         <Slider
           label="Max degrees" value={params.maxDegrees} min={-180} max={180} step={1}
           onChange={(v) => updateParams({ maxDegrees: v })}
+        />
+        <AnimationsList
+          treatmentId={treatment.id}
+          treatmentType="rotation"
+          numericParamKeys={['minDegrees', 'maxDegrees']}
+          currentParams={params as unknown as Record<string, unknown>}
         />
       </div>
     </div>

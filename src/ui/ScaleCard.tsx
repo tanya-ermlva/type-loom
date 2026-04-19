@@ -2,6 +2,7 @@ import { useStore } from '../state/store';
 import type { Treatment } from '../core/treatments/types';
 import { createScale, type ScaleParams, type ScalePattern } from '../core/treatments/scale';
 import { Slider } from './controls/Slider';
+import { AnimationsList } from './AnimationsList';
 
 interface ScaleCardProps {
   treatment: Treatment;
@@ -50,6 +51,12 @@ export function ScaleCard({ treatment, params }: ScaleCardProps) {
         <Slider
           label="Max scale" value={params.max} min={0.05} max={3} step={0.05}
           onChange={(v) => updateParams({ max: v })}
+        />
+        <AnimationsList
+          treatmentId={treatment.id}
+          treatmentType="scale"
+          numericParamKeys={['min', 'max']}
+          currentParams={params as unknown as Record<string, unknown>}
         />
       </div>
     </div>

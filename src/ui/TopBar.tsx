@@ -1,6 +1,7 @@
-import type { RefObject } from 'react';
+import { useState, type RefObject } from 'react';
 import { useStore } from '../state/store';
 import { exportCanvasAsPng } from '../core/export/png';
+import { exportCanvasAsWebm } from '../core/export/video';
 
 interface TopBarProps {
   canvasRef: RefObject<HTMLCanvasElement | null>;
@@ -9,10 +10,25 @@ interface TopBarProps {
 export function TopBar({ canvasRef }: TopBarProps) {
   const input = useStore((s) => s.config.input);
   const updateConfig = useStore((s) => s.updateConfig);
+  const loopDuration = useStore((s) => s.loopDuration);
+  const setPlaying = useStore((s) => s.setPlaying);
+  const setCurrentTime = useStore((s) => s.setCurrentTime);
+  const [recording, setRecording] = useState(false);
 
-  const handleExport = () => {
-    if (canvasRef.current) {
-      exportCanvasAsPng(canvasRef.current);
+  const handleExportPng = () => {
+    if (canvasRef.current) exportCanvasAsPng(canvasRef.current);
+  };
+
+  const handleExportVideo = async () => {
+    if (!canvasRef.current || recording) return;
+    setRecording(true);
+    // Reset playhead and start playing so the recording captures one full loop.
+    setCurrentTime(0);
+    setPlaying(true);
+    try {
+      await exportCanvasAsWebm(canvasRef.current, loopDuration);
+    } finally {
+      setRecording(false);
     }
   };
 
@@ -27,10 +43,18 @@ export function TopBar({ canvasRef }: TopBarProps) {
         className="flex-1 border border-gray-300 rounded px-3 py-1.5 text-sm font-mono"
       />
       <button
-        onClick={handleExport}
+        onClick={handleExportPng}
         className="px-3 py-1.5 text-sm bg-gray-900 text-white rounded hover:bg-gray-700"
       >
         Export PNG
+      </button>
+      <button
+        onClick={handleExportVideo}
+        disabled={recording}
+        className="px-3 py-1.5 text-sm bg-gray-900 text-white rounded hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+        title={`Records one full loop (${loopDuration.toFixed(1)}s) as WebM`}
+      >
+        {recording ? 'Recording…' : 'Export WebM'}
       </button>
     </header>
   );
