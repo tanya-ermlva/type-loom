@@ -11,13 +11,11 @@ export const CanvasPreview = forwardRef<HTMLCanvasElement>((_props, ref) => {
   const config = useStore((s) => s.config);
   const treatments = useStore((s) => s.treatments);
   const animations = useStore((s) => s.animations);
-  const isPlaying = useStore((s) => s.isPlaying);
   const currentTime = useStore((s) => s.currentTime);
-  const loopDuration = useStore((s) => s.loopDuration);
-  const setCurrentTime = useStore((s) => s.setCurrentTime);
 
-  // Render whenever inputs change (this also re-runs every animation frame
-  // via currentTime updates from the rAF loop below).
+  // Render whenever inputs change. The global playback clock (driven by
+  // usePlaybackLoop in App.tsx) advances `currentTime`, which re-triggers
+  // this effect on every animation frame while playing.
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -36,22 +34,6 @@ export const CanvasPreview = forwardRef<HTMLCanvasElement>((_props, ref) => {
 
     renderToCanvas(ctx, finalCells, config);
   }, [config, treatments, animations, currentTime]);
-
-  // requestAnimationFrame loop — only runs when isPlaying.
-  useEffect(() => {
-    if (!isPlaying) return;
-    let rafId: number;
-    let lastTime = performance.now();
-    const tick = (now: number) => {
-      const dt = (now - lastTime) / 1000;
-      lastTime = now;
-      const next = (useStore.getState().currentTime + dt) % Math.max(0.1, loopDuration);
-      setCurrentTime(next);
-      rafId = requestAnimationFrame(tick);
-    };
-    rafId = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(rafId);
-  }, [isPlaying, loopDuration, setCurrentTime]);
 
   return (
     <main className="flex-1 grid place-items-center bg-gray-100 overflow-auto p-4">

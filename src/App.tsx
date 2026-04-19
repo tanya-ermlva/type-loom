@@ -7,6 +7,7 @@ import { Timeline } from './ui/Timeline';
 import { VariationsView } from './ui/VariationsView';
 import { useStore } from './state/store';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+import { usePlaybackLoop } from './hooks/usePlaybackLoop';
 
 export default function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -15,6 +16,8 @@ export default function App() {
   const setPlaying = useStore((s) => s.setPlaying);
   const randomizePalette = useStore((s) => s.randomizePalette);
   const regenerateVariations = useStore((s) => s.regenerateVariations);
+
+  usePlaybackLoop();
 
   useKeyboardShortcuts({
     onPlayPause: () => setPlaying(!isPlaying),
