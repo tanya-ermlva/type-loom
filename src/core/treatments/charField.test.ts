@@ -39,18 +39,27 @@ describe('Char: Field (Linear-X pattern)', () => {
   });
 });
 
-describe('Char: Field (scroll)', () => {
-  it('scroll shifts the index over time', () => {
-    const t = createCharField({ pool: 'ABCD', pattern: 'linear-x', scroll: 1 });
-    const c0 = t.apply(baseCell, 0, 0, ctx(5, 5, 0)).char;
-    const c1 = t.apply(baseCell, 0, 0, ctx(5, 5, 1)).char;
+describe('Char: Field (scroll as direct phase offset)', () => {
+  it('different scroll values pick different chars at the same cell', () => {
+    const a = createCharField({ pool: 'ABCD', pattern: 'linear-x', scroll: 0 });
+    const b = createCharField({ pool: 'ABCD', pattern: 'linear-x', scroll: 0.5 });
+    const c0 = a.apply(baseCell, 0, 0, ctx(5, 5, 0)).char;
+    const c1 = b.apply(baseCell, 0, 0, ctx(5, 5, 0)).char;
     expect(c0).not.toBe(c1);
   });
 
-  it('scroll = 0 means no time-based shift', () => {
-    const t = createCharField({ pool: 'ABCD', pattern: 'linear-x', scroll: 0 });
+  it('static scroll alone does NOT shift over time (animate it for motion)', () => {
+    const t = createCharField({ pool: 'ABCD', pattern: 'linear-x', scroll: 0.5 });
     const c0 = t.apply(baseCell, 0, 0, ctx(5, 5, 0)).char;
     const c1 = t.apply(baseCell, 0, 0, ctx(5, 5, 1)).char;
+    expect(c0).toBe(c1);
+  });
+
+  it('integer scroll values wrap to the same char as scroll=0', () => {
+    const a = createCharField({ pool: 'ABCD', pattern: 'linear-x', scroll: 0 });
+    const b = createCharField({ pool: 'ABCD', pattern: 'linear-x', scroll: 1 });
+    const c0 = a.apply(baseCell, 0, 0, ctx(5, 5, 0)).char;
+    const c1 = b.apply(baseCell, 0, 0, ctx(5, 5, 0)).char;
     expect(c0).toBe(c1);
   });
 });

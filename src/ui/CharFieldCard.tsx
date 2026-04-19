@@ -58,7 +58,7 @@ export function CharFieldCard({ treatment, params }: CharFieldCardProps) {
           </select>
         </label>
         <Slider
-          label="Scroll (cycles/loop)" value={params.scroll} min={-5} max={5} step={1}
+          label="Scroll (phase 0–1)" value={params.scroll} min={0} max={1} step={0.01}
           onChange={(v) => updateParams({ scroll: v })}
           onAnimate={() => quickAnimate('scroll', DEFAULT_CHAR_FIELD_PARAMS.scroll, params.scroll)}
         />
@@ -67,7 +67,7 @@ export function CharFieldCard({ treatment, params }: CharFieldCardProps) {
         <AnimationsList
           treatmentId={treatment.id}
           treatmentType="charField"
-          animatableParams={[{ key: 'scroll', min: -5, max: 5, step: 1 }]}
+          animatableParams={[{ key: 'scroll', min: 0, max: 1, step: 0.01 }]}
           currentParams={params as unknown as Record<string, unknown>}
           mask={treatment.mask}
         />

@@ -45,8 +45,12 @@ export function createCharField(params: CharFieldParams): Treatment {
         }
       }
 
-      const loop = Math.max(0.0001, ctx.loopDuration);
-      const phaseShift = (ctx.t / loop) * params.scroll;
+      // `scroll` is a direct phase offset, not a speed. Static scroll just
+      // shifts the wave's position; animate it (sawtooth 0→1 over the loop)
+      // for continuous translation. Composes correctly with stagger and any
+      // animation curve — state at t=0 matches state at t=loopDuration as
+      // long as the underlying animation itself loops.
+      const phaseShift = params.scroll;
       const index = Math.floor((f + phaseShift) * params.pool.length);
       return { ...cell, char: pickFromPool(params.pool, index) };
     },
