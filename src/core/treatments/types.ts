@@ -40,4 +40,7 @@ export type TreatmentType =
   | 'spacing'
   | 'scale'
   | 'rotation'
-  | 'tint';
+  | 'tint'
+  | 'charSwap'
+  | 'charScramble'
+  | 'charField';

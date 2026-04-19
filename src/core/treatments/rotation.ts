@@ -1,5 +1,6 @@
 import type { Cell } from '../types';
 import type { Treatment } from './types';
+import { deterministicHash } from '../util/hash';
 
 export type RotationPattern = 'radial' | 'linear-x' | 'linear-y' | 'random';
 
@@ -39,9 +40,7 @@ export function createRotation(params: RotationParams): Treatment {
           factor = ctx.rows <= 1 ? 0 : (row / (ctx.rows - 1)) * 2 - 1;
           break;
         case 'random': {
-          // Deterministic hash so same (row, col) always gets same value.
-          const h = Math.sin(row * 12.9898 + col * 78.233) * 43758.5453;
-          factor = (h - Math.floor(h)) * 2 - 1;
+          factor = deterministicHash(row, col, 0) * 2 - 1;
           break;
         }
       }

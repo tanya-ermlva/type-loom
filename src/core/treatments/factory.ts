@@ -33,6 +33,10 @@ export function recreateTreatment(
     case 'scale':      t = createScale(params as ScaleParams); break;
     case 'rotation':   t = createRotation(params as RotationParams); break;
     case 'tint':       t = createTint(params as TintParams); break;
+    case 'charSwap':
+    case 'charScramble':
+    case 'charField':
+      throw new Error(`Treatment type '${type}' not yet implemented`);
   }
   return Object.assign(t, { id, enabled, params });
 }

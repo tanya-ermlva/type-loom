@@ -59,6 +59,10 @@ function makeTreatment(type: TreatmentType): Treatment & { params: unknown } {
       const t = createTint(DEFAULT_TINT_PARAMS);
       return Object.assign(t, { params: DEFAULT_TINT_PARAMS });
     }
+    case 'charSwap':
+    case 'charScramble':
+    case 'charField':
+      throw new Error(`Treatment type '${type}' not yet implemented`);
   }
 }
 
