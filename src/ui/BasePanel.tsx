@@ -39,7 +39,7 @@ export function BasePanel() {
           onChange={(v) => updateConfig({ vDistance: v })}
         />
         <Slider
-          label="Letter spacing" value={config.hDistance} min={4} max={200}
+          label="Column spacing" value={config.hDistance} min={4} max={200}
           onChange={(v) => updateConfig({ hDistance: v })}
         />
 
