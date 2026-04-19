@@ -5,6 +5,7 @@ import type { ScaleParams } from './scale';
 import type { RotationParams } from './rotation';
 import type { TintParams } from './tint';
 import type { CharSwapParams } from './charSwap';
+import type { CharScrambleParams } from './charScramble';
 
 /**
  * Canonical default params for each treatment type.
@@ -61,4 +62,13 @@ export const DEFAULT_CHAR_SWAP_PARAMS: CharSwapParams = {
   mode: 'random',
   seed: 0,
   poolIndex: 0,
+};
+
+export const DEFAULT_CHAR_SCRAMBLE_PARAMS: CharScrambleParams = {
+  pool: '!@#$%&*?_<>',
+  mode: 'settle',
+  settleStart: 0,
+  flipsPerSecond: 12,
+  staggerAmount: 1.5,
+  staggerAxis: 'y',
 };
