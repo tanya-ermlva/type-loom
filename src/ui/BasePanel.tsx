@@ -5,6 +5,8 @@ import { ColorSwatch } from './controls/ColorSwatch';
 import { NumberField } from './controls/NumberField';
 import { loadFontFile, displayFontName } from '../core/font/loader';
 import { DEFAULT_BASE_CONFIG } from '../core/types';
+import { useQuickAnimate } from '../hooks/useQuickAnimate';
+import { AnimationsList } from './AnimationsList';
 
 const DEFAULT_FONT_FAMILY = DEFAULT_BASE_CONFIG.fontFamily;
 
@@ -29,6 +31,7 @@ export function BasePanel() {
   const randomizePalette = useStore((s) => s.randomizePalette);
   const [fontError, setFontError] = useState<string | null>(null);
   const [fontLoading, setFontLoading] = useState(false);
+  const quickAnimate = useQuickAnimate('config', undefined);
 
   const handleFontUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -133,18 +136,22 @@ export function BasePanel() {
         <Slider
           label="Char size" value={config.charSize} min={8} max={200}
           onChange={(v) => updateConfig({ charSize: v })}
+          onAnimate={() => quickAnimate('charSize', DEFAULT_BASE_CONFIG.charSize, config.charSize)}
         />
         <Slider
           label="Row spacing" value={config.rowSpacing} min={4} max={200}
           onChange={(v) => updateConfig({ rowSpacing: v })}
+          onAnimate={() => quickAnimate('rowSpacing', DEFAULT_BASE_CONFIG.rowSpacing, config.rowSpacing)}
         />
         <Slider
           label="Column spacing" value={config.columnSpacing} min={0} max={300}
           onChange={(v) => updateConfig({ columnSpacing: v })}
+          onAnimate={() => quickAnimate('columnSpacing', DEFAULT_BASE_CONFIG.columnSpacing, config.columnSpacing)}
         />
         <Slider
           label="Character spacing" value={config.charSpacing} min={4} max={200}
           onChange={(v) => updateConfig({ charSpacing: v })}
+          onAnimate={() => quickAnimate('charSpacing', DEFAULT_BASE_CONFIG.charSpacing, config.charSpacing)}
         />
 
         <div className="pt-2 space-y-2">
@@ -161,6 +168,22 @@ export function BasePanel() {
           <ColorSwatch label="FG" value={config.fgColor} onChange={(v) => updateConfig({ fgColor: v })} />
           <ColorSwatch label="BG" value={config.bgColor} onChange={(v) => updateConfig({ bgColor: v })} />
         </div>
+
+        <AnimationsList
+          treatmentId="config"
+          animatableParams={[
+            { key: 'charSize',       min: 8, max: 200, step: 1 },
+            { key: 'rowSpacing',     min: 4, max: 200, step: 1 },
+            { key: 'columnSpacing',  min: 0, max: 300, step: 1 },
+            { key: 'charSpacing',    min: 4, max: 200, step: 1 },
+          ]}
+          currentParams={{
+            charSize: config.charSize,
+            rowSpacing: config.rowSpacing,
+            columnSpacing: config.columnSpacing,
+            charSpacing: config.charSpacing,
+          }}
+        />
       </div>
     </aside>
   );

@@ -8,6 +8,9 @@ import { createSpacing, type SpacingParams } from '../core/treatments/spacing';
 import { createScale, type ScaleParams } from '../core/treatments/scale';
 import { createRotation, type RotationParams } from '../core/treatments/rotation';
 import { createTint, type TintParams } from '../core/treatments/tint';
+import { createCharSwap, type CharSwapParams } from '../core/treatments/charSwap';
+import { createCharScramble, type CharScrambleParams } from '../core/treatments/charScramble';
+import { createCharField, type CharFieldParams } from '../core/treatments/charField';
 import {
   DEFAULT_SILHOUETTE_PARAMS,
   DEFAULT_DRIFT_PARAMS,
@@ -15,6 +18,9 @@ import {
   DEFAULT_SCALE_PARAMS,
   DEFAULT_ROTATION_PARAMS,
   DEFAULT_TINT_PARAMS,
+  DEFAULT_CHAR_SWAP_PARAMS,
+  DEFAULT_CHAR_SCRAMBLE_PARAMS,
+  DEFAULT_CHAR_FIELD_PARAMS,
 } from '../core/treatments/defaults';
 
 import { SilhouetteCard } from './SilhouetteCard';
@@ -23,6 +29,9 @@ import { SpacingCard } from './SpacingCard';
 import { ScaleCard } from './ScaleCard';
 import { RotationCard } from './RotationCard';
 import { TintCard } from './TintCard';
+import { CharSwapCard } from './CharSwapCard';
+import { CharScrambleCard } from './CharScrambleCard';
+import { CharFieldCard } from './CharFieldCard';
 
 const TREATMENT_OPTIONS: Array<{ type: TreatmentType; label: string }> = [
   { type: 'silhouette', label: 'Silhouette' },
@@ -31,6 +40,9 @@ const TREATMENT_OPTIONS: Array<{ type: TreatmentType; label: string }> = [
   { type: 'scale', label: 'Scale' },
   { type: 'rotation', label: 'Rotation' },
   { type: 'tint', label: 'Tint' },
+  { type: 'charSwap', label: 'Char: Swap' },
+  { type: 'charScramble', label: 'Char: Scramble' },
+  { type: 'charField', label: 'Char: Field' },
 ];
 
 function makeTreatment(type: TreatmentType): Treatment & { params: unknown } {
@@ -58,6 +70,18 @@ function makeTreatment(type: TreatmentType): Treatment & { params: unknown } {
     case 'tint': {
       const t = createTint(DEFAULT_TINT_PARAMS);
       return Object.assign(t, { params: DEFAULT_TINT_PARAMS });
+    }
+    case 'charSwap': {
+      const t = createCharSwap(DEFAULT_CHAR_SWAP_PARAMS);
+      return Object.assign(t, { params: DEFAULT_CHAR_SWAP_PARAMS });
+    }
+    case 'charScramble': {
+      const t = createCharScramble(DEFAULT_CHAR_SCRAMBLE_PARAMS);
+      return Object.assign(t, { params: DEFAULT_CHAR_SCRAMBLE_PARAMS });
+    }
+    case 'charField': {
+      const t = createCharField(DEFAULT_CHAR_FIELD_PARAMS);
+      return Object.assign(t, { params: DEFAULT_CHAR_FIELD_PARAMS });
     }
   }
 }
@@ -131,6 +155,12 @@ export function TreatmentsPanel() {
               return <RotationCard key={t.id} treatment={t} params={params as RotationParams ?? DEFAULT_ROTATION_PARAMS} />;
             case 'tint':
               return <TintCard key={t.id} treatment={t} params={params as TintParams ?? DEFAULT_TINT_PARAMS} />;
+            case 'charSwap':
+              return <CharSwapCard key={t.id} treatment={t} params={params as CharSwapParams ?? DEFAULT_CHAR_SWAP_PARAMS} />;
+            case 'charScramble':
+              return <CharScrambleCard key={t.id} treatment={t} params={params as CharScrambleParams ?? DEFAULT_CHAR_SCRAMBLE_PARAMS} />;
+            case 'charField':
+              return <CharFieldCard key={t.id} treatment={t} params={params as CharFieldParams ?? DEFAULT_CHAR_FIELD_PARAMS} />;
           }
         })}
       </div>

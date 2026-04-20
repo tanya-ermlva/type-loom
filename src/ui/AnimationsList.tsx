@@ -14,7 +14,7 @@ export interface AnimatableParam {
 
 interface AnimationsListProps {
   treatmentId: string;
-  treatmentType: TreatmentType;
+  treatmentType?: TreatmentType;
   /** Animatable params on this treatment (excluding mask). Each carries its slider range. */
   animatableParams: AnimatableParam[];
   /** Current values, used to seed `from` and `to` when adding. */
@@ -187,14 +187,16 @@ export function AnimationsList({
               />
               <Slider
                 label="duration (s)" value={a.duration}
-                min={0.1} max={20} step={0.1}
+                min={0.1} max={60} step={0.1}
                 onChange={(v) => updateAnimation(a.id, { duration: Math.max(0.1, v) })}
               />
-              <Slider
-                label="stagger (s)" value={a.staggerAmount}
-                min={0} max={10} step={0.1}
-                onChange={(v) => updateAnimation(a.id, { staggerAmount: Math.max(0, v) })}
-              />
+              {treatmentId !== 'config' && (
+                <Slider
+                  label="stagger (s)" value={a.staggerAmount}
+                  min={0} max={10} step={0.1}
+                  onChange={(v) => updateAnimation(a.id, { staggerAmount: Math.max(0, v) })}
+                />
+              )}
 
               <div className="grid grid-cols-2 gap-2 pt-0.5">
                 <label className="block text-xs">
@@ -210,21 +212,23 @@ export function AnimationsList({
                     <option value="sawtooth">sawtooth</option>
                   </select>
                 </label>
-                <label className="block text-xs">
-                  <div className="text-gray-500 mb-0.5">stagger axis</div>
-                  <select
-                    value={a.staggerAxis}
-                    onChange={(e) => updateAnimation(a.id, { staggerAxis: e.target.value as StaggerAxis })}
-                    disabled={staggerDisabled}
-                    className={`${SELECT_CLS} disabled:opacity-50 disabled:cursor-not-allowed`}
-                    title={staggerDisabled ? 'Set stagger > 0 to enable' : ''}
-                  >
-                    <option value="x">x</option>
-                    <option value="y">y</option>
-                    <option value="radial">radial</option>
-                    <option value="diagonal">diagonal</option>
-                  </select>
-                </label>
+                {treatmentId !== 'config' && (
+                  <label className="block text-xs">
+                    <div className="text-gray-500 mb-0.5">stagger axis</div>
+                    <select
+                      value={a.staggerAxis}
+                      onChange={(e) => updateAnimation(a.id, { staggerAxis: e.target.value as StaggerAxis })}
+                      disabled={staggerDisabled}
+                      className={`${SELECT_CLS} disabled:opacity-50 disabled:cursor-not-allowed`}
+                      title={staggerDisabled ? 'Set stagger > 0 to enable' : ''}
+                    >
+                      <option value="x">x</option>
+                      <option value="y">y</option>
+                      <option value="radial">radial</option>
+                      <option value="diagonal">diagonal</option>
+                    </select>
+                  </label>
+                )}
               </div>
             </div>
           );

@@ -24,7 +24,7 @@ export type StaggerAxis = 'x' | 'y' | 'radial' | 'diagonal';
 export interface AnimationSpec {
   id: string;
   treatmentId: string;
-  treatmentType: TreatmentType;
+  treatmentType?: TreatmentType;  // omitted for config animations (treatmentId === 'config')
   paramKey: string;
   from: number;
   to: number;

@@ -19,6 +19,7 @@ interface StoreState {
   isPlaying: boolean;
   currentTime: number;
   loopDuration: number;
+  playbackSpeed: number;        // multiplier on time advancement (1 = normal)
   showMaskOverlays: boolean;
 
   currentProjectId: string | null;
@@ -37,6 +38,7 @@ interface StoreState {
   setPlaying: (b: boolean) => void;
   setCurrentTime: (t: number) => void;
   setLoopDuration: (d: number) => void;
+  setPlaybackSpeed: (s: number) => void;
   setShowMaskOverlays: (b: boolean) => void;
 
   randomizePalette: () => void;
@@ -59,6 +61,7 @@ export const useStore = create<StoreState>((set, get) => ({
   isPlaying: false,
   currentTime: 0,
   loopDuration: 4,
+  playbackSpeed: 1,
   showMaskOverlays: true,
 
   currentProjectId: null,
@@ -99,6 +102,7 @@ export const useStore = create<StoreState>((set, get) => ({
   setPlaying: (b) => set({ isPlaying: b }),
   setCurrentTime: (t) => set({ currentTime: t }),
   setLoopDuration: (d) => set({ loopDuration: Math.max(0.1, d), isDirty: true }),
+  setPlaybackSpeed: (s) => set({ playbackSpeed: Math.max(0.05, s) }),
   setShowMaskOverlays: (b) => set({ showMaskOverlays: b }),
 
   randomizePalette: () =>

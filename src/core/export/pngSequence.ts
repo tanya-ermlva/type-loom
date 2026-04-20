@@ -5,6 +5,7 @@ import type { AnimationSpec } from '../animation/types';
 import { computeLayout } from '../grid/layout';
 import { runAnimatedPipeline } from '../treatments/animatedPipeline';
 import { renderToCanvas } from '../render/canvas';
+import { applyConfigAnimations } from '../animation/configAnim';
 
 export interface PngSequenceOptions {
   config: BaseGridConfig;
@@ -38,14 +39,15 @@ export async function exportPngSequence(opts: PngSequenceOptions): Promise<void>
   for (let i = 0; i < totalFrames; i++) {
     const t = totalFrames === 1 ? 0 : (i / totalFrames) * loopDuration;
 
-    const layoutCells = computeLayout(config);
-    const rows = Math.floor(config.canvas.height / config.rowSpacing);
+    const effectiveConfig = applyConfigAnimations(config, animations, t, loopDuration);
+    const layoutCells = computeLayout(effectiveConfig);
+    const rows = Math.floor(effectiveConfig.canvas.height / effectiveConfig.rowSpacing);
     const columns = rows > 0 ? layoutCells.length / rows : 0;
     const finalCells = runAnimatedPipeline(layoutCells, treatments, animations, {
-      config, rows, columns, t, loopDuration,
+      config: effectiveConfig, rows, columns, t, loopDuration,
     });
 
-    renderToCanvas(ctx, finalCells, config);
+    renderToCanvas(ctx, finalCells, effectiveConfig);
 
     const blob: Blob = await new Promise((resolve, reject) => {
       offscreen.toBlob((b) => (b ? resolve(b) : reject(new Error('toBlob returned null'))), 'image/png');

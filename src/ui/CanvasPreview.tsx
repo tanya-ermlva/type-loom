@@ -3,6 +3,7 @@ import { useStore } from '../state/store';
 import { computeLayout } from '../core/grid/layout';
 import { runAnimatedPipeline } from '../core/treatments/animatedPipeline';
 import { renderToCanvas } from '../core/render/canvas';
+import { applyConfigAnimations } from '../core/animation/configAnim';
 import { MaskOverlays } from './MaskOverlays';
 
 export const CanvasPreview = forwardRef<HTMLCanvasElement>((_props, ref) => {
@@ -56,17 +57,18 @@ export const CanvasPreview = forwardRef<HTMLCanvasElement>((_props, ref) => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    canvas.width = config.canvas.width;
-    canvas.height = config.canvas.height;
+    const effectiveConfig = applyConfigAnimations(config, animations, currentTime, loopDuration);
+    canvas.width = effectiveConfig.canvas.width;
+    canvas.height = effectiveConfig.canvas.height;
 
-    const layoutCells = computeLayout(config);
-    const rows = Math.floor(config.canvas.height / config.rowSpacing);
+    const layoutCells = computeLayout(effectiveConfig);
+    const rows = Math.floor(effectiveConfig.canvas.height / effectiveConfig.rowSpacing);
     const columns = rows > 0 ? layoutCells.length / rows : 0;
     const finalCells = runAnimatedPipeline(layoutCells, treatments, animations, {
-      config, rows, columns, t: currentTime, loopDuration,
+      config: effectiveConfig, rows, columns, t: currentTime, loopDuration,
     });
 
-    renderToCanvas(ctx, finalCells, config);
+    renderToCanvas(ctx, finalCells, effectiveConfig);
   }, [config, treatments, animations, currentTime, loopDuration]);
 
   const hasMasks = treatments.some((t) => t.enabled && t.mask);
