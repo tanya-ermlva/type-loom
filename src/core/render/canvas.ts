@@ -20,14 +20,15 @@ export function renderToCanvas(
   ctx.textBaseline = 'middle';
 
   for (const cell of cells) {
-    if (!cell.visible || cell.opacity <= 0) continue;
+    const effectiveOpacity = cell.opacity * cell.silhouetteCoverage;
+    if (!cell.visible || effectiveOpacity <= 0) continue;
     if (cell.char === ' ' || cell.char === '') continue;
 
     ctx.save();
     ctx.translate(cell.position.x, cell.position.y);
     if (cell.rotation !== 0) ctx.rotate(cell.rotation);
     if (cell.scale !== 1) ctx.scale(cell.scale, cell.scale);
-    ctx.globalAlpha = cell.opacity;
+    ctx.globalAlpha = effectiveOpacity;
     ctx.fillStyle = cell.color;
     ctx.font = `${charSize}px ${fontFamily}`;
     ctx.fillText(cell.char, 0, 0);

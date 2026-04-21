@@ -21,6 +21,7 @@ export interface Cell {
   color: string;        // CSS color
   opacity: number;      // 0..1
   visible: boolean;     // false = skip drawing
+  silhouetteCoverage: number;  // 0..1, default 1. Written by Silhouette treatments, multiplied into final opacity at render.
 }
 
 // The default render state for a cell before any treatment runs
@@ -30,6 +31,7 @@ export const IDENTITY_CELL: Omit<Cell, 'char' | 'position'> = {
   color: '#1a1a4d',
   opacity: 1,
   visible: true,
+  silhouetteCoverage: 1,
 };
 
 // Configuration for the base grid

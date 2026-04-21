@@ -1,6 +1,6 @@
 import { useStore } from '../state/store';
 import type { Treatment } from '../core/treatments/types';
-import { createTint, type TintParams, type TintMode, type TintPattern } from '../core/treatments/tint';
+import { createTint, type TintParams, type TintMode, type TintPattern, type TintBlendMode } from '../core/treatments/tint';
 import { Slider } from './controls/Slider';
 import { ColorSwatch } from './controls/ColorSwatch';
 import { AnimationsList } from './AnimationsList';
@@ -75,10 +75,27 @@ export function TintCard({ treatment, params }: TintCardProps) {
             />
           </>
         ) : (
-          <div className="space-y-2">
-            <ColorSwatch label="From" value={params.colorA} onChange={(v) => updateParams({ colorA: v })} />
-            <ColorSwatch label="To" value={params.colorB} onChange={(v) => updateParams({ colorB: v })} />
-          </div>
+          <>
+            <label className="block text-sm">
+              <div className="text-gray-700 mb-1">Blend mode</div>
+              <select
+                value={params.blendMode}
+                onChange={(e) => updateParams({ blendMode: e.target.value as TintBlendMode })}
+                className="w-full border border-gray-300 rounded px-2 py-1 text-sm bg-white focus:outline-none focus:border-blue-400"
+                title="How this tint's color composes with the cell's current color (last prior Tint or base FG)"
+              >
+                <option value="normal">Normal (replace)</option>
+                <option value="multiply">Multiply (darken)</option>
+                <option value="screen">Screen (lighten)</option>
+                <option value="overlay">Overlay</option>
+                <option value="add">Add</option>
+              </select>
+            </label>
+            <div className="space-y-2">
+              <ColorSwatch label="From" value={params.colorA} onChange={(v) => updateParams({ colorA: v })} />
+              <ColorSwatch label="To" value={params.colorB} onChange={(v) => updateParams({ colorB: v })} />
+            </div>
+          </>
         )}
 
         <MaskControls treatment={treatment} />

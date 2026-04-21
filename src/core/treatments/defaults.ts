@@ -22,6 +22,7 @@ export const DEFAULT_SILHOUETTE_PARAMS: SilhouetteParams = {
   size: 0.7,
   softness: 0.1,
   invert: false,
+  blendMode: 'intersect',
 };
 
 export const DEFAULT_DRIFT_PARAMS: DriftParams = {
@@ -52,6 +53,7 @@ export const DEFAULT_ROTATION_PARAMS: RotationParams = {
 export const DEFAULT_TINT_PARAMS: TintParams = {
   mode: 'opacity',
   pattern: 'radial',
+  blendMode: 'normal',
   minOpacity: 0.2,
   maxOpacity: 1,
   colorA: '#1a1a4d',
