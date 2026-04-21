@@ -1,6 +1,6 @@
 import { useStore } from '../state/store';
 import type { Treatment } from '../core/treatments/types';
-import { createSilhouette, type SilhouetteParams } from '../core/treatments/silhouette';
+import { createSilhouette, type SilhouetteParams, type SilhouetteShape, type SilhouetteBlendMode } from '../core/treatments/silhouette';
 import { DEFAULT_SILHOUETTE_PARAMS } from '../core/treatments/defaults';
 import { Slider } from './controls/Slider';
 import { AnimationsList } from './AnimationsList';
@@ -38,7 +38,35 @@ export function SilhouetteCard({ treatment, params }: SilhouetteCardProps) {
       </div>
 
       <div className="space-y-3">
-        <div className="text-xs text-gray-500">Shape: Lens</div>
+        <label className="block text-sm">
+          <div className="text-gray-700 mb-1">Shape</div>
+          <select
+            value={params.shape}
+            onChange={(e) => updateParams({ shape: e.target.value as SilhouetteShape })}
+            className="w-full border border-gray-300 rounded px-2 py-1 text-sm bg-white focus:outline-none focus:border-blue-400"
+          >
+            <option value="lens">Lens</option>
+            <option value="circle">Circle</option>
+            <option value="diamond">Diamond</option>
+            <option value="hourglass">Hourglass</option>
+            <option value="wave">Wave</option>
+            <option value="x">X</option>
+          </select>
+        </label>
+        <label className="block text-sm">
+          <div className="text-gray-700 mb-1">Blend mode</div>
+          <select
+            value={params.blendMode}
+            onChange={(e) => updateParams({ blendMode: e.target.value as SilhouetteBlendMode })}
+            className="w-full border border-gray-300 rounded px-2 py-1 text-sm bg-white focus:outline-none focus:border-blue-400"
+            title="How this silhouette composes with any previous silhouette"
+          >
+            <option value="intersect">Intersect (AND)</option>
+            <option value="replace">Replace</option>
+            <option value="union">Union (OR)</option>
+            <option value="subtract">Subtract (cut)</option>
+          </select>
+        </label>
         <Slider
           label="Size" value={params.size} min={0.05} max={1.5} step={0.01}
           onChange={(v) => updateParams({ size: v })}
