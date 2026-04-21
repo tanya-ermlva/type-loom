@@ -22,6 +22,7 @@ export function blendCells(a: Cell, b: Cell, t: number): Cell {
     color: lerpHexColor(a.color, b.color, t),
     opacity: lerp(a.opacity, b.opacity, t),
     visible: t >= 0.5 ? b.visible : a.visible,
+    silhouetteCoverage: lerp(a.silhouetteCoverage, b.silhouetteCoverage, t),
   };
 }
 

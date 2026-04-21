@@ -41,6 +41,7 @@ export function computeLayout(config: BaseGridConfig): Cell[] {
         color: fgColor,
         opacity: 1,
         visible: true,
+        silhouetteCoverage: 1,
       });
     }
   }

@@ -6,6 +6,7 @@ const baseCell: Cell = {
   char: 'X',
   position: { x: 0, y: 0 },
   scale: 1, rotation: 0, color: '#000', opacity: 1, visible: true,
+  silhouetteCoverage: 1,
 };
 
 const ctx = (rows: number, cols: number) => ({
