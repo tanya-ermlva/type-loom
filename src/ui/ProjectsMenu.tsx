@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type RefObject } from 'react';
 import { useStore } from '../state/store';
 import { listProjects, captureThumbnail } from '../core/persistence/storage';
 import { makeSnapshot } from '../core/persistence/serialize';
+import { EXAMPLES } from '../core/presets/examples';
 import type { SavedProject } from '../core/persistence/storage';
 
 interface ProjectsMenuProps {
@@ -147,6 +148,23 @@ export function ProjectsMenu({ canvasRef, onOpenManage }: ProjectsMenuProps) {
               <div className="border-t border-gray-100" />
             </>
           )}
+
+          <div className="px-3 py-1 text-[10px] uppercase tracking-wider text-gray-400">Examples</div>
+          {EXAMPLES.map((ex) => (
+            <button
+              key={ex.id}
+              onClick={() => {
+                setOpen(false);
+                if (isDirty && !confirm('Unsaved changes will be lost. Load this example?')) return;
+                useStore.getState().loadSnapshot(ex.snapshot);
+              }}
+              className="block w-full text-left px-3 py-1.5 hover:bg-gray-100 truncate"
+              title={ex.description}
+            >
+              {ex.name}
+            </button>
+          ))}
+          <div className="border-t border-gray-100" />
 
           <button onClick={() => { setOpen(false); onOpenManage(); }} className="block w-full text-left px-3 py-2 hover:bg-gray-100">
             Manage projects…
