@@ -53,6 +53,7 @@ export const DEFAULT_ROTATION_PARAMS: RotationParams = {
 export const DEFAULT_TINT_PARAMS: TintParams = {
   mode: 'opacity',
   pattern: 'radial',
+  blendMode: 'normal',
   minOpacity: 0.2,
   maxOpacity: 1,
   colorA: '#1a1a4d',

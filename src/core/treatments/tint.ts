@@ -3,32 +3,36 @@ import type { Treatment } from './types';
 
 export type TintMode = 'opacity' | 'color';
 export type TintPattern = 'radial' | 'linear-x' | 'linear-y';
+export type TintBlendMode = 'normal' | 'multiply' | 'screen' | 'overlay' | 'add';
 
 export interface TintParams {
   mode: TintMode;
   pattern: TintPattern;
-  // For opacity mode:
+  blendMode: TintBlendMode;
   minOpacity: number;
   maxOpacity: number;
-  // For color mode (gradient between two colors):
   colorA: string;
   colorB: string;
 }
 
-/**
- * Tint treatment: varies per-cell opacity or color by a function of
- * cell position in the grid.
- *
- * - mode 'opacity': interpolates opacity between min and max
- * - mode 'color': interpolates color between colorA and colorB (overrides cell color)
- */
+/** Per-channel blend math. a = prior channel value (0..1), b = incoming. */
+function blendChannel(a: number, b: number, mode: TintBlendMode): number {
+  switch (mode) {
+    case 'normal':   return b;
+    case 'multiply': return a * b;
+    case 'screen':   return 1 - (1 - a) * (1 - b);
+    case 'overlay':  return a < 0.5 ? 2 * a * b : 1 - 2 * (1 - a) * (1 - b);
+    case 'add':      return Math.min(1, a + b);
+  }
+}
+
 export function createTint(params: TintParams): Treatment {
   return {
     id: crypto.randomUUID(),
     type: 'tint',
     enabled: true,
     apply(cell: Cell, row: number, col: number, ctx) {
-      let t: number; // 0..1
+      let t: number;
       switch (params.pattern) {
         case 'radial': {
           const nx = ctx.columns <= 1 ? 0 : (col / (ctx.columns - 1)) * 2 - 1;
@@ -47,25 +51,42 @@ export function createTint(params: TintParams): Treatment {
       if (params.mode === 'opacity') {
         const opacity = params.minOpacity + (params.maxOpacity - params.minOpacity) * t;
         return { ...cell, opacity: cell.opacity * opacity };
-      } else {
-        return { ...cell, color: lerpHexColor(params.colorA, params.colorB, t) };
       }
+      const targetHex = lerpHexColor(params.colorA, params.colorB, t);
+      const blended = blendHexColors(cell.color, targetHex, params.blendMode);
+      return { ...cell, color: blended };
     },
   };
 }
 
 function lerpHexColor(a: string, b: string, t: number): string {
-  const ha = a.replace('#', '').padEnd(6, '0');
-  const hb = b.replace('#', '').padEnd(6, '0');
-  const ar = parseInt(ha.slice(0, 2), 16);
-  const ag = parseInt(ha.slice(2, 4), 16);
-  const ab = parseInt(ha.slice(4, 6), 16);
-  const br = parseInt(hb.slice(0, 2), 16);
-  const bg = parseInt(hb.slice(2, 4), 16);
-  const bb = parseInt(hb.slice(4, 6), 16);
+  const [ar, ag, ab] = parseHex(a);
+  const [br, bg, bb] = parseHex(b);
   const r = Math.round(ar + (br - ar) * t);
   const g = Math.round(ag + (bg - ag) * t);
   const bl = Math.round(ab + (bb - ab) * t);
-  const hex = (n: number) => n.toString(16).padStart(2, '0');
-  return `#${hex(r)}${hex(g)}${hex(bl)}`;
+  return toHex(r, g, bl);
+}
+
+function blendHexColors(prev: string, next: string, mode: TintBlendMode): string {
+  const [pr, pg, pb] = parseHex(prev);
+  const [nr, ng, nb] = parseHex(next);
+  const r = Math.round(blendChannel(pr / 255, nr / 255, mode) * 255);
+  const g = Math.round(blendChannel(pg / 255, ng / 255, mode) * 255);
+  const b = Math.round(blendChannel(pb / 255, nb / 255, mode) * 255);
+  return toHex(r, g, b);
+}
+
+function parseHex(hex: string): [number, number, number] {
+  const s = hex.replace('#', '').padEnd(6, '0');
+  return [
+    parseInt(s.slice(0, 2), 16),
+    parseInt(s.slice(2, 4), 16),
+    parseInt(s.slice(4, 6), 16),
+  ];
+}
+
+function toHex(r: number, g: number, b: number): string {
+  const h = (n: number) => n.toString(16).padStart(2, '0');
+  return `#${h(r)}${h(g)}${h(b)}`;
 }
