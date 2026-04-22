@@ -29,6 +29,7 @@ export const DEFAULT_DRIFT_PARAMS: DriftParams = {
   axis: 'x',
   amplitude: 30,
   frequency: 0.4,
+  scope: 'character',
 };
 
 export const DEFAULT_SPACING_PARAMS: SpacingParams = {

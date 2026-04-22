@@ -1,6 +1,6 @@
 import { useStore } from '../state/store';
 import type { Treatment } from '../core/treatments/types';
-import { createDrift, type DriftParams, type DriftAxis } from '../core/treatments/drift';
+import { createDrift, type DriftParams, type DriftAxis, type DriftScope } from '../core/treatments/drift';
 import { Slider } from './controls/Slider';
 import { AnimationsList } from './AnimationsList';
 import { MaskControls } from './MaskControls';
@@ -58,6 +58,18 @@ export function DriftCard({ treatment, params }: DriftCardProps) {
           onChange={(v) => updateParams({ frequency: v })}
           onAnimate={() => quickAnimate('frequency', DEFAULT_DRIFT_PARAMS.frequency, params.frequency)}
         />
+        <label className="block text-sm">
+          <div className="text-gray-700 mb-1">Apply per</div>
+          <select
+            value={params.scope}
+            onChange={(e) => updateParams({ scope: e.target.value as DriftScope })}
+            className="w-full border border-gray-300 rounded px-2 py-1 text-sm bg-white focus:outline-none focus:border-blue-400"
+            title="Character: each letter drifts independently. Word: every letter of a word drifts together as a unit."
+          >
+            <option value="character">Character (each letter)</option>
+            <option value="word">Word (letters locked together)</option>
+          </select>
+        </label>
         <MaskControls treatment={treatment} />
         <AnimationsList
           treatmentId={treatment.id}

@@ -45,44 +45,36 @@ const TREATMENT_OPTIONS: Array<{ type: TreatmentType; label: string }> = [
   { type: 'charField', label: 'Char: Field' },
 ];
 
+function labelFor(type: TreatmentType): string {
+  return TREATMENT_OPTIONS.find((o) => o.type === type)?.label ?? type;
+}
+
 function makeTreatment(type: TreatmentType): Treatment & { params: unknown } {
   switch (type) {
-    case 'silhouette': {
-      const t = createSilhouette(DEFAULT_SILHOUETTE_PARAMS);
-      return Object.assign(t, { params: DEFAULT_SILHOUETTE_PARAMS });
-    }
-    case 'drift': {
-      const t = createDrift(DEFAULT_DRIFT_PARAMS);
-      return Object.assign(t, { params: DEFAULT_DRIFT_PARAMS });
-    }
-    case 'spacing': {
-      const t = createSpacing(DEFAULT_SPACING_PARAMS);
-      return Object.assign(t, { params: DEFAULT_SPACING_PARAMS });
-    }
-    case 'scale': {
-      const t = createScale(DEFAULT_SCALE_PARAMS);
-      return Object.assign(t, { params: DEFAULT_SCALE_PARAMS });
-    }
-    case 'rotation': {
-      const t = createRotation(DEFAULT_ROTATION_PARAMS);
-      return Object.assign(t, { params: DEFAULT_ROTATION_PARAMS });
-    }
-    case 'tint': {
-      const t = createTint(DEFAULT_TINT_PARAMS);
-      return Object.assign(t, { params: DEFAULT_TINT_PARAMS });
-    }
-    case 'charSwap': {
-      const t = createCharSwap(DEFAULT_CHAR_SWAP_PARAMS);
-      return Object.assign(t, { params: DEFAULT_CHAR_SWAP_PARAMS });
-    }
-    case 'charScramble': {
-      const t = createCharScramble(DEFAULT_CHAR_SCRAMBLE_PARAMS);
-      return Object.assign(t, { params: DEFAULT_CHAR_SCRAMBLE_PARAMS });
-    }
-    case 'charField': {
-      const t = createCharField(DEFAULT_CHAR_FIELD_PARAMS);
-      return Object.assign(t, { params: DEFAULT_CHAR_FIELD_PARAMS });
-    }
+    case 'silhouette':   return Object.assign(createSilhouette(DEFAULT_SILHOUETTE_PARAMS),       { params: DEFAULT_SILHOUETTE_PARAMS });
+    case 'drift':        return Object.assign(createDrift(DEFAULT_DRIFT_PARAMS),                 { params: DEFAULT_DRIFT_PARAMS });
+    case 'spacing':      return Object.assign(createSpacing(DEFAULT_SPACING_PARAMS),             { params: DEFAULT_SPACING_PARAMS });
+    case 'scale':        return Object.assign(createScale(DEFAULT_SCALE_PARAMS),                 { params: DEFAULT_SCALE_PARAMS });
+    case 'rotation':     return Object.assign(createRotation(DEFAULT_ROTATION_PARAMS),           { params: DEFAULT_ROTATION_PARAMS });
+    case 'tint':         return Object.assign(createTint(DEFAULT_TINT_PARAMS),                   { params: DEFAULT_TINT_PARAMS });
+    case 'charSwap':     return Object.assign(createCharSwap(DEFAULT_CHAR_SWAP_PARAMS),          { params: DEFAULT_CHAR_SWAP_PARAMS });
+    case 'charScramble': return Object.assign(createCharScramble(DEFAULT_CHAR_SCRAMBLE_PARAMS),  { params: DEFAULT_CHAR_SCRAMBLE_PARAMS });
+    case 'charField':    return Object.assign(createCharField(DEFAULT_CHAR_FIELD_PARAMS),        { params: DEFAULT_CHAR_FIELD_PARAMS });
+  }
+}
+
+function renderCard(t: Treatment): React.ReactNode {
+  const params = (t as Treatment & { params?: unknown }).params;
+  switch (t.type) {
+    case 'silhouette':   return <SilhouetteCard   treatment={t} params={params as SilhouetteParams   ?? DEFAULT_SILHOUETTE_PARAMS} />;
+    case 'drift':        return <DriftCard        treatment={t} params={params as DriftParams        ?? DEFAULT_DRIFT_PARAMS} />;
+    case 'spacing':      return <SpacingCard      treatment={t} params={params as SpacingParams      ?? DEFAULT_SPACING_PARAMS} />;
+    case 'scale':        return <ScaleCard        treatment={t} params={params as ScaleParams        ?? DEFAULT_SCALE_PARAMS} />;
+    case 'rotation':     return <RotationCard     treatment={t} params={params as RotationParams     ?? DEFAULT_ROTATION_PARAMS} />;
+    case 'tint':         return <TintCard         treatment={t} params={params as TintParams         ?? DEFAULT_TINT_PARAMS} />;
+    case 'charSwap':     return <CharSwapCard     treatment={t} params={params as CharSwapParams     ?? DEFAULT_CHAR_SWAP_PARAMS} />;
+    case 'charScramble': return <CharScrambleCard treatment={t} params={params as CharScrambleParams ?? DEFAULT_CHAR_SCRAMBLE_PARAMS} />;
+    case 'charField':    return <CharFieldCard    treatment={t} params={params as CharFieldParams    ?? DEFAULT_CHAR_FIELD_PARAMS} />;
   }
 }
 
@@ -92,7 +84,20 @@ export function TreatmentsPanel() {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Click outside to close
+  // Accordion: only one expanded at a time. When a treatment is added, auto-focus it.
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (treatments.length === 0) {
+      if (expandedId !== null) setExpandedId(null);
+      return;
+    }
+    // If the expanded one was removed or there's none expanded, focus the last one.
+    const stillExists = treatments.some((t) => t.id === expandedId);
+    if (!stillExists) setExpandedId(treatments[treatments.length - 1].id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [treatments.length]);
+
   useEffect(() => {
     if (!menuOpen) return;
     const handler = (e: MouseEvent) => {
@@ -105,14 +110,16 @@ export function TreatmentsPanel() {
   }, [menuOpen]);
 
   const handleAdd = (type: TreatmentType) => {
-    addTreatment(makeTreatment(type));
+    const t = makeTreatment(type);
+    addTreatment(t);
+    setExpandedId(t.id);
     setMenuOpen(false);
   };
 
   return (
     <aside className="w-72 border-l border-gray-200 p-4 overflow-y-auto bg-white">
       <div className="flex items-center justify-between mb-4 relative">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-500">Treatments</h2>
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400">Treatments</h2>
         <div ref={menuRef} className="relative">
           <button
             onClick={() => setMenuOpen((o) => !o)}
@@ -136,32 +143,26 @@ export function TreatmentsPanel() {
         </div>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-1.5">
         {treatments.length === 0 && (
           <p className="text-xs text-gray-400">No treatments yet. Click + Add to start.</p>
         )}
         {treatments.map((t) => {
-          const params = (t as Treatment & { params?: unknown }).params;
-          switch (t.type) {
-            case 'silhouette':
-              return <SilhouetteCard key={t.id} treatment={t} params={params as SilhouetteParams ?? DEFAULT_SILHOUETTE_PARAMS} />;
-            case 'drift':
-              return <DriftCard key={t.id} treatment={t} params={params as DriftParams ?? DEFAULT_DRIFT_PARAMS} />;
-            case 'spacing':
-              return <SpacingCard key={t.id} treatment={t} params={params as SpacingParams ?? DEFAULT_SPACING_PARAMS} />;
-            case 'scale':
-              return <ScaleCard key={t.id} treatment={t} params={params as ScaleParams ?? DEFAULT_SCALE_PARAMS} />;
-            case 'rotation':
-              return <RotationCard key={t.id} treatment={t} params={params as RotationParams ?? DEFAULT_ROTATION_PARAMS} />;
-            case 'tint':
-              return <TintCard key={t.id} treatment={t} params={params as TintParams ?? DEFAULT_TINT_PARAMS} />;
-            case 'charSwap':
-              return <CharSwapCard key={t.id} treatment={t} params={params as CharSwapParams ?? DEFAULT_CHAR_SWAP_PARAMS} />;
-            case 'charScramble':
-              return <CharScrambleCard key={t.id} treatment={t} params={params as CharScrambleParams ?? DEFAULT_CHAR_SCRAMBLE_PARAMS} />;
-            case 'charField':
-              return <CharFieldCard key={t.id} treatment={t} params={params as CharFieldParams ?? DEFAULT_CHAR_FIELD_PARAMS} />;
+          const isExpanded = expandedId === t.id;
+          if (isExpanded) {
+            return <div key={t.id}>{renderCard(t)}</div>;
           }
+          return (
+            <button
+              key={t.id}
+              onClick={() => setExpandedId(t.id)}
+              className="w-full flex items-center justify-between px-3 py-2 text-sm text-gray-700 bg-white border border-gray-200 rounded-md hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+              title={`Expand ${labelFor(t.type)}`}
+            >
+              <span>{labelFor(t.type)}</span>
+              <span className="text-gray-300 text-xs">›</span>
+            </button>
+          );
         })}
       </div>
     </aside>
