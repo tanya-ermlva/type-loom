@@ -30,6 +30,8 @@ export const DEFAULT_DRIFT_PARAMS: DriftParams = {
   amplitude: 30,
   frequency: 0.4,
   scope: 'character',
+  phase: 0,
+  waveform: 'sine',
 };
 
 export const DEFAULT_SPACING_PARAMS: SpacingParams = {

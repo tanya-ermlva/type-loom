@@ -1,6 +1,6 @@
 import { useStore } from '../state/store';
 import type { Treatment } from '../core/treatments/types';
-import { createDrift, type DriftParams, type DriftAxis, type DriftScope } from '../core/treatments/drift';
+import { createDrift, type DriftParams, type DriftAxis, type DriftScope, type DriftWaveform } from '../core/treatments/drift';
 import { Slider } from './controls/Slider';
 import { AnimationsList } from './AnimationsList';
 import { MaskControls } from './MaskControls';
@@ -48,6 +48,19 @@ export function DriftCard({ treatment, params }: DriftCardProps) {
             <option value="both">Both</option>
           </select>
         </label>
+        <label className="block text-sm">
+          <div className="text-gray-700 mb-1">Waveform</div>
+          <select
+            value={params.waveform}
+            onChange={(e) => updateParams({ waveform: e.target.value as DriftWaveform })}
+            className="w-full border border-gray-300 rounded px-2 py-1 text-sm bg-white focus:outline-none focus:border-blue-400"
+            title="Sine = smooth. Triangle = sharp peaks. Square = discrete left/right flips."
+          >
+            <option value="sine">Sine (smooth)</option>
+            <option value="triangle">Triangle (sharp)</option>
+            <option value="square">Square (stepped)</option>
+          </select>
+        </label>
         <Slider
           label="Amplitude" value={params.amplitude} min={0} max={200} step={1}
           onChange={(v) => updateParams({ amplitude: v })}
@@ -57,6 +70,11 @@ export function DriftCard({ treatment, params }: DriftCardProps) {
           label="Frequency" value={params.frequency} min={0} max={2} step={0.01}
           onChange={(v) => updateParams({ frequency: v })}
           onAnimate={() => quickAnimate('frequency', DEFAULT_DRIFT_PARAMS.frequency, params.frequency)}
+        />
+        <Slider
+          label="Phase" value={params.phase} min={0} max={1} step={0.01}
+          onChange={(v) => updateParams({ phase: v })}
+          onAnimate={() => quickAnimate('phase', 0, 1)}
         />
         <label className="block text-sm">
           <div className="text-gray-700 mb-1">Apply per</div>
@@ -77,6 +95,7 @@ export function DriftCard({ treatment, params }: DriftCardProps) {
           animatableParams={[
             { key: 'amplitude', min: 0, max: 200, step: 1 },
             { key: 'frequency', min: 0, max: 2,   step: 0.01 },
+            { key: 'phase',     min: 0, max: 1,   step: 0.01 },
           ]}
           currentParams={params as unknown as Record<string, unknown>}
           mask={treatment.mask}
