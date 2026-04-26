@@ -43,6 +43,7 @@ export function Sidebar() {
   const composition = useStore((s) => s.composition);
   const selectedFlowId = useStore((s) => s.selectedFlowId);
   const selectFlow = useStore((s) => s.selectFlow);
+  const updateCompositionMeta = useStore((s) => s.updateCompositionMeta);
   const updateFlowParams = useStore((s) => s.updateFlowParams);
   const toggleFlow = useStore((s) => s.toggleFlow);
   const addFlow = useStore((s) => s.addFlow);
@@ -72,6 +73,33 @@ export function Sidebar() {
         </button>
       </div>
 
+      {/* Composition-level controls */}
+      <div className="p-3 border-b border-gray-100 space-y-2">
+        <div className="text-[10px] uppercase tracking-wider text-gray-400">Composition</div>
+        <div className="flex items-center gap-2">
+          <label className="flex items-center gap-2 flex-1 text-xs text-gray-600">
+            <span>Background</span>
+            <input
+              type="color"
+              value={composition.bgColor}
+              onChange={(e) => updateCompositionMeta({ bgColor: e.target.value })}
+              className="h-7 w-10 border border-gray-300 rounded cursor-pointer"
+              title="Canvas background color"
+            />
+            <span className="font-mono text-[10px] text-gray-400">{composition.bgColor}</span>
+          </label>
+        </div>
+        <Slider
+          label="Loop duration (s)"
+          value={composition.loopDuration}
+          min={1}
+          max={30}
+          step={0.5}
+          fmt={1}
+          onChange={(v) => updateCompositionMeta({ loopDuration: v })}
+        />
+      </div>
+
       {/* Flow list */}
       <div className="p-3 border-b border-gray-100 space-y-1">
         <div className="flex items-center justify-between mb-1">
@@ -88,32 +116,31 @@ export function Sidebar() {
           return (
             <div
               key={f.id}
-              className={`flex items-center gap-2 px-2 py-1 rounded cursor-pointer ${
+              className={`flex items-center gap-2 px-2 py-1 rounded ${
                 isSelected ? 'bg-gray-100' : 'hover:bg-gray-50'
               }`}
-              onClick={() => selectFlow(f.id)}
             >
               <input
                 type="checkbox"
                 checked={f.enabled}
                 onChange={() => toggleFlow(f.id)}
-                onClick={(e) => e.stopPropagation()}
                 className="cursor-pointer"
+                title={f.enabled ? 'Disable flow' : 'Enable flow'}
               />
-              <span
-                className={`flex-1 text-xs truncate ${
+              <input
+                type="text"
+                value={f.params.word}
+                onChange={(e) => updateFlowParams(f.id, { word: e.target.value })}
+                onFocus={() => selectFlow(f.id)}
+                placeholder="(empty)"
+                className={`flex-1 min-w-0 text-sm font-medium bg-transparent border-none outline-none px-1 py-0.5 rounded focus:bg-white focus:ring-1 focus:ring-blue-400 ${
                   f.enabled ? 'text-gray-800' : 'text-gray-400 line-through'
                 }`}
-              >
-                {f.params.word}
-              </span>
+              />
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  removeFlow(f.id);
-                }}
+                onClick={() => removeFlow(f.id)}
                 className="text-gray-400 hover:text-red-500 text-xs"
-                title="Remove"
+                title="Remove flow"
               >
                 ✕
               </button>
@@ -125,16 +152,6 @@ export function Sidebar() {
       {/* Params for selected flow */}
       {selectedFlow ? (
         <div className="flex-1 overflow-y-auto p-3 space-y-3">
-          <label className="block text-xs">
-            <div className="text-gray-600 mb-0.5">Word</div>
-            <input
-              type="text"
-              value={selectedFlow.params.word}
-              onChange={(e) => update({ word: e.target.value })}
-              className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
-            />
-          </label>
-
           <div>
             <Slider
               label="Rows"

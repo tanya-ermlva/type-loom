@@ -2,9 +2,10 @@ import { create } from 'zustand';
 import type { Composition, Flow, RowFlowParams } from './flow';
 
 /**
- * Default composition: recreates the SHAPING / THE / FUTURE middle card
- * from the reference image. Three RowFlows stacked vertically, each with
- * its own rhythm.
+ * Default composition: three RowFlows stacked vertically (DIGITAL / FREEDOM /
+ * DIALOGUE), each with its own rhythm and density envelope. Inspired by the
+ * reference image's SHAPING / THE / FUTURE layered card composition, retuned
+ * for the longer word lengths so they fit without overlap.
  */
 export const DEFAULT_COMPOSITION: Composition = {
   canvas: { width: 1000, height: 800 },
@@ -13,14 +14,14 @@ export const DEFAULT_COMPOSITION: Composition = {
   loopDuration: 6,
   flows: [
     {
-      id: 'shaping',
+      id: 'digital',
       kind: 'row',
       enabled: true,
       params: {
-        word: 'SHAPING',
+        word: 'DIGITAL',
         rows: 8,
-        // Outer rows are densely packed with SHAPINGs, middle rows are sparser.
-        density: { mode: 'tight-edges', min: 2, max: 6 },
+        // Outer rows are densely packed, middle rows sparser.
+        density: { mode: 'tight-edges', min: 2, max: 5 },
         xWave: { amplitude: 30, frequency: 0.6, phase: 0, phaseSpeed: 1 },
         rowSpacing: 32,
         yCenter: 170,
@@ -30,16 +31,16 @@ export const DEFAULT_COMPOSITION: Composition = {
       },
     },
     {
-      id: 'the',
+      id: 'freedom',
       kind: 'row',
       enabled: true,
       params: {
-        word: 'THE',
+        word: 'FREEDOM',
         rows: 10,
-        // Middle rows are dense with THEs; edges are sparser.
-        density: { mode: 'tight-middle', min: 5, max: 14 },
+        // Middle rows densest. Max kept low because FREEDOM is wide.
+        density: { mode: 'tight-middle', min: 3, max: 7 },
         xWave: { amplitude: 18, frequency: 0.8, phase: 0.25, phaseSpeed: 1 },
-        rowSpacing: 26,
+        rowSpacing: 28,
         yCenter: 400,
         fontSize: 24,
         color: '#0a0a0a',
@@ -47,13 +48,13 @@ export const DEFAULT_COMPOSITION: Composition = {
       },
     },
     {
-      id: 'future',
+      id: 'dialogue',
       kind: 'row',
       enabled: true,
       params: {
-        word: 'FUTURE',
+        word: 'DIALOGUE',
         rows: 7,
-        density: { mode: 'uniform', min: 5, max: 7 },
+        density: { mode: 'uniform', min: 4, max: 6 },
         xWave: { amplitude: 22, frequency: 0.55, phase: 0.5, phaseSpeed: 1 },
         rowSpacing: 30,
         yCenter: 640,
@@ -65,12 +66,15 @@ export const DEFAULT_COMPOSITION: Composition = {
   ],
 };
 
+type CompositionMeta = Pick<Composition, 'bgColor' | 'loopDuration' | 'fontFamily'>;
+
 interface Store {
   composition: Composition;
   playing: boolean;
   selectedFlowId: string | null;
   setPlaying: (v: boolean) => void;
   selectFlow: (id: string | null) => void;
+  updateCompositionMeta: (patch: Partial<CompositionMeta>) => void;
   updateFlowParams: (id: string, patch: Partial<RowFlowParams>) => void;
   toggleFlow: (id: string) => void;
   addFlow: () => void;
@@ -84,6 +88,8 @@ export const useStore = create<Store>((set) => ({
   selectedFlowId: DEFAULT_COMPOSITION.flows[0].id,
   setPlaying: (v) => set({ playing: v }),
   selectFlow: (id) => set({ selectedFlowId: id }),
+  updateCompositionMeta: (patch) =>
+    set((s) => ({ composition: { ...s.composition, ...patch } })),
   updateFlowParams: (id, patch) =>
     set((s) => ({
       composition: {
