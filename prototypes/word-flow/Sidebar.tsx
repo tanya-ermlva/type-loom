@@ -69,9 +69,14 @@ function RowFlowEditor({
             <option value="uniform">Uniform</option>
             <option value="tight-middle">Tight middle (V-shape, dense middle)</option>
             <option value="tight-edges">Tight edges (Λ-shape, dense edges)</option>
+            <option value="bell">Bell (smooth peak in middle)</option>
+            <option value="valley">Valley (smooth dip in middle)</option>
             <option value="linear-down">Linear down (top → bottom)</option>
             <option value="linear-up">Linear up (bottom → top)</option>
-            <option value="sine">Sine (oscillating)</option>
+            <option value="stepped">Stepped (3 plateaus)</option>
+            <option value="sine">Sine (oscillating, 2 cycles)</option>
+            <option value="spike">Spike (single dense row)</option>
+            <option value="zebra">Zebra (alternating dense / sparse)</option>
             <option value="random">Random (per-row noise)</option>
           </select>
         </label>

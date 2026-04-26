@@ -24,11 +24,16 @@ export type WordInstance = {
 /** Density envelope shape: how word-count varies across rows. */
 export type DensityMode =
   | 'uniform'
-  | 'tight-middle'   // V-shape: peak in middle, sparse at edges
-  | 'tight-edges'    // Λ-shape: sparse middle, dense edges
+  | 'tight-middle'   // V-shape: linear peak in middle, sparse at edges
+  | 'tight-edges'    // Λ-shape: linear valley in middle, dense edges
+  | 'bell'           // smooth gaussian peak in middle (softer than tight-middle)
+  | 'valley'         // smooth gaussian valley in middle (softer than tight-edges)
   | 'linear-down'    // ramps from max (top) to min (bottom)
   | 'linear-up'      // ramps from min (top) to max (bottom)
+  | 'stepped'        // 3 discrete plateaus going from min to max
   | 'sine'           // smoothly oscillates across rows (2 full cycles)
+  | 'spike'          // single sharp peak on the middle row, rest at min
+  | 'zebra'          // alternating: odd rows = max, even rows = min
   | 'random';        // deterministic per-row noise between min and max
 
 /** Per-word amplitude envelope across a row. */
@@ -169,10 +174,33 @@ function countForRow(row: number, total: number, params: RowFlowParams): number 
     case 'linear-up':
       // top = min, bottom = max (crescendo)
       return Math.round(min + span * rowFraction);
+    case 'bell': {
+      // Smooth gaussian peak at row center. sigma 0.25 → near-zero at edges.
+      const g = Math.exp(-Math.pow((rowFraction - 0.5) / 0.25, 2) / 2);
+      return Math.round(min + span * g);
+    }
+    case 'valley': {
+      // Smooth gaussian valley at row center — inverted bell.
+      const g = Math.exp(-Math.pow((rowFraction - 0.5) / 0.25, 2) / 2);
+      return Math.round(max - span * g);
+    }
+    case 'stepped': {
+      // 3 discrete plateaus. step ∈ {0, 1, 2} → height {0, 0.5, 1}.
+      const step = Math.min(2, Math.floor(rowFraction * 3));
+      return Math.round(min + span * (step / 2));
+    }
     case 'sine': {
       // Two full cycles across rows. wave ∈ [-1, 1]; map to [min, max].
       const wave = Math.sin(rowFraction * Math.PI * 4); // 4π = 2 full cycles
       return Math.round(min + (span / 2) * (wave + 1));
+    }
+    case 'spike': {
+      // Only the middle row at max, all others at min.
+      return Math.round((row === Math.round((total - 1) / 2)) ? max : min);
+    }
+    case 'zebra': {
+      // Alternating: odd rows max, even rows min.
+      return row % 2 === 0 ? Math.round(min) : Math.round(max);
     }
     case 'random': {
       // Deterministic per-row noise. Same row index always picks the same count.
