@@ -31,6 +31,9 @@ export type DensityMode =
   | 'sine'           // smoothly oscillates across rows (2 full cycles)
   | 'random';        // deterministic per-row noise between min and max
 
+/** Per-word amplitude envelope across a row. */
+export type WaveEnvelope = 'uniform' | 'center-peak' | 'edge-peak';
+
 export interface RowFlowParams {
   word: string;
   rows: number;
@@ -46,6 +49,8 @@ export interface RowFlowParams {
     frequency: number;   // cycles per row
     phase: number;       // 0..1 turns (static offset)
     phaseSpeed: number;  // turns per loop; INTEGER values keep the loop seamless
+    /** Across-row envelope: scales each word's wave contribution by column position. */
+    envelope: WaveEnvelope;
   };
   /** Animates the per-row word count over time — words breathe in/out. */
   densityPulse: {
@@ -114,6 +119,23 @@ function hash01(seed: number): number {
   return x - Math.floor(x);
 }
 
+/**
+ * Returns 0..1 multiplier for the wave amplitude based on a word's column position
+ * within its row. tFrac=0 is leftmost, 0.5 is center, 1 is rightmost.
+ *
+ * - uniform: 1 everywhere (every word moves equally — old behavior)
+ * - center-peak: smooth bell, 1 at center, 0 at edges (edges stand still)
+ * - edge-peak: inverse — center stands still, edges move
+ *
+ * Smooth (raised-cosine / Hann) shape — gentler than a linear tent.
+ */
+function envelopeFactor(envelope: WaveEnvelope, tFrac: number): number {
+  if (envelope === 'uniform') return 1;
+  const distFromCenter = Math.abs(tFrac - 0.5) * 2; // 0 at center, 1 at edges
+  const bell = (1 + Math.cos(distFromCenter * Math.PI)) / 2; // 1 → 0
+  return envelope === 'center-peak' ? bell : 1 - bell;
+}
+
 function countForRow(row: number, total: number, params: RowFlowParams): number {
   if (total <= 1) return Math.round((params.density.min + params.density.max) / 2);
   const rowFraction = row / (total - 1);                // 0..1
@@ -178,7 +200,8 @@ export function evaluateRowFlow(
 
     for (let i = 0; i < count; i++) {
       const tFrac = count === 1 ? 0.5 : i / (count - 1);
-      const baseX = margin + tFrac * usable + xWave;
+      const env = envelopeFactor(params.xWave.envelope, tFrac);
+      const baseX = margin + tFrac * usable + xWave * env;
 
       const seed = r * 1000 + i;
       const jx = (hash01(seed * 7) - 0.5) * 2 * params.jitter.position;

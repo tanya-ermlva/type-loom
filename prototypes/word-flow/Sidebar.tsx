@@ -4,6 +4,7 @@ import type {
   RowFlowParams,
   CircleFlowParams,
   DensityMode,
+  WaveEnvelope,
 } from './flow';
 
 function Slider({
@@ -115,6 +116,19 @@ function RowFlowEditor({
 
       <div className="pt-2 border-t border-gray-100">
         <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-2">X wave</div>
+        <label className="block text-xs mb-2">
+          <div className="text-gray-600 mb-0.5">Envelope</div>
+          <select
+            value={p.xWave.envelope}
+            onChange={(e) => update({ xWave: { ...p.xWave, envelope: e.target.value as WaveEnvelope } })}
+            className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+            title="Across-row amplitude shape"
+          >
+            <option value="uniform">Uniform (every word moves equally)</option>
+            <option value="center-peak">Center peak (edges still, center moves)</option>
+            <option value="edge-peak">Edge peak (center still, edges move)</option>
+          </select>
+        </label>
         <Slider
           label="Amplitude (px)"
           value={p.xWave.amplitude}
