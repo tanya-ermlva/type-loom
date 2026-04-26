@@ -187,6 +187,7 @@ export function evaluateRowFlow(
   fontSize: number,
   yCenter: number,
   edgePadding: number,
+  rowSpacingScale = 1,
 ): WordInstance[] {
   const out: WordInstance[] = [];
   const loop = Math.max(0.0001, loopDuration);
@@ -218,7 +219,8 @@ export function evaluateRowFlow(
     const count = Math.max(0, Math.round(baseCount + pulseDelta));
     if (count < 1) continue;
 
-    const y = yCenter + (r - (params.rows - 1) / 2) * params.rowSpacing;
+    const effRowSpacing = params.rowSpacing * rowSpacingScale;
+    const y = yCenter + (r - (params.rows - 1) / 2) * effRowSpacing;
     const xWave = Math.sin(r * params.xWave.frequency + phaseRad) * params.xWave.amplitude;
 
     for (let i = 0; i < count; i++) {
@@ -294,45 +296,78 @@ export function evaluateCircleFlow(
 }
 
 /**
- * Auto-layout: distributes enabled RowFlows vertically with edgePadding at top
- * and bottom, and even gaps between blocks for any leftover space. CircleFlows
- * position themselves explicitly via params.center and are not part of the row
- * stack.
- *
- * If the total content height exceeds the available space (canvas - 2×edgePadding),
- * inner gaps clamp to 0 (blocks touch) and some bottom clipping is accepted —
- * better than violating the locked row spacing or the edge padding contract.
+ * Vertical block size for a RowFlow at a given rowSpacing. Composed of:
+ *   variable part: (rows - 1) × rowSpacing  — gaps between row centers
+ *   fixed part:    fontSize + 2 × jitter    — text height + worst-case noise
+ * Only the variable part scales when we need to shrink to fit.
  */
-function computeRowFlowYCenters(c: Composition): Map<string, number> {
-  const enabledRowFlows = c.flows.filter(
+function rowFlowVariableHeight(rowFlow: Extract<Flow, { kind: 'row' }>): number {
+  return (rowFlow.params.rows - 1) * rowFlow.params.rowSpacing;
+}
+
+function rowFlowFixedHeight(
+  rowFlow: Extract<Flow, { kind: 'row' }>,
+  fontSize: number,
+): number {
+  return fontSize + 2 * rowFlow.params.jitter.position;
+}
+
+/**
+ * Auto-layout: distributes enabled RowFlows vertically with edgePadding at top
+ * and bottom, and even gaps between blocks for any leftover space.
+ *
+ * If the total content height would exceed the available space, all rowSpacings
+ * shrink by a single uniform `rowSpacingScale` factor so the stack ALWAYS fits
+ * within the edge padding. The fixed portion (fontSize + jitter) isn't scaled —
+ * scaling that would shrink the type itself.
+ */
+function computeLayout(
+  c: Composition,
+): { yCenters: Map<string, number>; rowSpacingScale: number } {
+  const rowFlows = c.flows.filter(
     (f): f is Extract<Flow, { kind: 'row' }> => f.enabled && f.kind === 'row',
   );
-  const heights = enabledRowFlows.map((f) => f.params.rows * f.params.rowSpacing);
-  const totalHeight = heights.reduce((sum, h) => sum + h, 0);
 
-  const usableHeight = Math.max(0, c.canvas.height - 2 * c.edgePadding);
-  const innerGapsCount = Math.max(0, enabledRowFlows.length - 1);
+  const sumVariable = rowFlows.reduce((s, f) => s + rowFlowVariableHeight(f), 0);
+  const sumFixed = rowFlows.reduce((s, f) => s + rowFlowFixedHeight(f, c.fontSize), 0);
+  const totalNeeded = sumVariable + sumFixed;
+
+  const usable = Math.max(0, c.canvas.height - 2 * c.edgePadding);
+
+  // If we don't fit, shrink only the variable part. Floor at 0.1 so rows don't
+  // collapse into each other entirely (degenerate).
+  const rowSpacingScale =
+    totalNeeded > usable
+      ? Math.max(0.1, (usable - sumFixed) / Math.max(1, sumVariable))
+      : 1;
+
+  const effectiveHeights = rowFlows.map(
+    (f) => rowFlowVariableHeight(f) * rowSpacingScale + rowFlowFixedHeight(f, c.fontSize),
+  );
+  const effectiveSum = effectiveHeights.reduce((s, h) => s + h, 0);
+
+  const innerGapsCount = Math.max(0, rowFlows.length - 1);
   const innerGap =
-    innerGapsCount > 0 ? Math.max(0, (usableHeight - totalHeight) / innerGapsCount) : 0;
+    innerGapsCount > 0 ? Math.max(0, (usable - effectiveSum) / innerGapsCount) : 0;
 
-  const map = new Map<string, number>();
+  const yCenters = new Map<string, number>();
   let y = c.edgePadding;
-  for (let i = 0; i < enabledRowFlows.length; i++) {
-    map.set(enabledRowFlows[i].id, y + heights[i] / 2);
-    y += heights[i] + innerGap;
+  for (let i = 0; i < rowFlows.length; i++) {
+    yCenters.set(rowFlows[i].id, y + effectiveHeights[i] / 2);
+    y += effectiveHeights[i] + innerGap;
   }
-  return map;
+  return { yCenters, rowSpacingScale };
 }
 
 export function evaluate(c: Composition, t: number): WordInstance[] {
   const all: WordInstance[] = [];
-  const rowYCenters = computeRowFlowYCenters(c);
+  const { yCenters, rowSpacingScale } = computeLayout(c);
 
   for (const flow of c.flows) {
     if (!flow.enabled) continue;
     switch (flow.kind) {
       case 'row': {
-        const yCenter = rowYCenters.get(flow.id) ?? c.canvas.height / 2;
+        const yCenter = yCenters.get(flow.id) ?? c.canvas.height / 2;
         all.push(
           ...evaluateRowFlow(
             flow.params,
@@ -342,6 +377,7 @@ export function evaluate(c: Composition, t: number): WordInstance[] {
             c.fontSize,
             yCenter,
             c.edgePadding,
+            rowSpacingScale,
           ),
         );
         break;
