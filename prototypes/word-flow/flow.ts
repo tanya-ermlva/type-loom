@@ -47,9 +47,13 @@ export interface RowFlowParams {
     phase: number;       // 0..1 turns (static offset)
     phaseSpeed: number;  // turns per loop; INTEGER values keep the loop seamless
   };
+  /** Animates the per-row word count over time — words breathe in/out. */
+  densityPulse: {
+    amplitude: number;   // ± words added/removed at peak (0 = off)
+    phaseSpeed: number;  // turns per loop; integer keeps the loop seamless
+  };
   rowSpacing: number;    // px between adjacent rows
   yCenter: number;       // canvas y the block is centered on
-  fontSize: number;
   color: string;
   /** Deterministic per-instance noise — gives the printed-paper feel. */
   jitter: {
@@ -59,17 +63,42 @@ export interface RowFlowParams {
   };
 }
 
-export interface Flow {
-  id: string;
-  kind: 'row';
-  enabled: boolean;
-  params: RowFlowParams;
+/** Words placed on concentric rings around a center point. */
+export interface CircleFlowParams {
+  word: string;
+  center: { x: number; y: number };
+  rings: number;             // number of concentric rings
+  innerRadius: number;       // px
+  outerRadius: number;       // px
+  wordsPerRing: number;      // count, evenly spaced around each ring
+  /** Whether words follow the ring tangent or stay upright. */
+  alignment: 'tangent' | 'horizontal';
+  /** Whole composition rotates over time. */
+  rotation: {
+    phase: number;           // 0..1 turns (static offset)
+    phaseSpeed: number;      // turns per loop; integer = seamless
+  };
+  color: string;
+  jitter: {
+    position: number;
+    rotation: number;
+    opacity: number;
+  };
 }
+
+/** Discriminated union of flow kinds. Adding a new kind = one new variant + one switch case. */
+export type Flow =
+  | { id: string; kind: 'row';    enabled: boolean; params: RowFlowParams }
+  | { id: string; kind: 'circle'; enabled: boolean; params: CircleFlowParams };
+
+export type FlowKind = Flow['kind'];
 
 export interface Composition {
   canvas: { width: number; height: number };
   bgColor: string;
   fontFamily: string;
+  /** Single font size shared by every word in every flow. */
+  fontSize: number;
   loopDuration: number;
   flows: Flow[];
 }
@@ -123,18 +152,25 @@ export function evaluateRowFlow(
   t: number,
   canvasWidth: number,
   loopDuration: number,
+  fontSize: number,
 ): WordInstance[] {
   const out: WordInstance[] = [];
-  const phaseTurns =
-    params.xWave.phase +
-    params.xWave.phaseSpeed * (t / Math.max(0.0001, loopDuration));
+  const loop = Math.max(0.0001, loopDuration);
+  const phaseTurns = params.xWave.phase + params.xWave.phaseSpeed * (t / loop);
   const phaseRad = phaseTurns * 2 * Math.PI;
+
+  // Density pulse: time-varying delta added to every row's count.
+  // amplitude=0 → no pulse (backwards compatible).
+  const pulseDelta =
+    Math.sin(2 * Math.PI * params.densityPulse.phaseSpeed * (t / loop)) *
+    params.densityPulse.amplitude;
 
   const margin = canvasWidth * 0.06;
   const usable = canvasWidth - 2 * margin;
 
   for (let r = 0; r < params.rows; r++) {
-    const count = countForRow(r, params.rows, params);
+    const baseCount = countForRow(r, params.rows, params);
+    const count = Math.max(0, Math.round(baseCount + pulseDelta));
     if (count < 1) continue;
 
     const y = params.yCenter + (r - (params.rows - 1) / 2) * params.rowSpacing;
@@ -157,7 +193,7 @@ export function evaluateRowFlow(
         rotation: jr,
         opacity: jo,
         color: params.color,
-        fontSize: params.fontSize,
+        fontSize,
       });
     }
   }
@@ -165,11 +201,64 @@ export function evaluateRowFlow(
   return out;
 }
 
+export function evaluateCircleFlow(
+  params: CircleFlowParams,
+  t: number,
+  loopDuration: number,
+  fontSize: number,
+): WordInstance[] {
+  const out: WordInstance[] = [];
+  const loop = Math.max(0.0001, loopDuration);
+  const globalRotRad =
+    (params.rotation.phase + params.rotation.phaseSpeed * (t / loop)) * 2 * Math.PI;
+
+  for (let r = 0; r < params.rings; r++) {
+    const ringFrac = params.rings <= 1 ? 0.5 : r / (params.rings - 1);
+    const radius = params.innerRadius + ringFrac * (params.outerRadius - params.innerRadius);
+    const count = Math.max(1, params.wordsPerRing);
+    // Alternate rings get a half-step rotation offset → richer texture.
+    const ringPhaseRad = (r % 2 === 0) ? 0 : Math.PI / count;
+
+    for (let i = 0; i < count; i++) {
+      const angle = (i / count) * 2 * Math.PI + ringPhaseRad + globalRotRad;
+      const x = params.center.x + Math.cos(angle) * radius;
+      const y = params.center.y + Math.sin(angle) * radius;
+
+      const seed = r * 1000 + i;
+      const jx = (hash01(seed * 7) - 0.5) * 2 * params.jitter.position;
+      const jy = (hash01(seed * 11) - 0.5) * 2 * params.jitter.position;
+      const jr = (hash01(seed * 13) - 0.5) * 2 * params.jitter.rotation;
+      const jo = 1 - hash01(seed * 17) * params.jitter.opacity;
+
+      // Tangent-aligned words rotate to the ring's tangent direction (angle + 90°).
+      const baseRotation = params.alignment === 'tangent' ? angle + Math.PI / 2 : 0;
+
+      out.push({
+        word: params.word,
+        x: x + jx,
+        y: y + jy,
+        rotation: baseRotation + jr,
+        opacity: jo,
+        color: params.color,
+        fontSize,
+      });
+    }
+  }
+  return out;
+}
+
 export function evaluate(c: Composition, t: number): WordInstance[] {
   const all: WordInstance[] = [];
   for (const flow of c.flows) {
     if (!flow.enabled) continue;
-    all.push(...evaluateRowFlow(flow.params, t, c.canvas.width, c.loopDuration));
+    switch (flow.kind) {
+      case 'row':
+        all.push(...evaluateRowFlow(flow.params, t, c.canvas.width, c.loopDuration, c.fontSize));
+        break;
+      case 'circle':
+        all.push(...evaluateCircleFlow(flow.params, t, c.loopDuration, c.fontSize));
+        break;
+    }
   }
   return all;
 }
