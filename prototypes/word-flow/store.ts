@@ -8,10 +8,10 @@ import type {
 } from './flow';
 
 /**
- * Default composition: three RowFlows stacked vertically (DIGITAL / FREEDOM /
- * DIALOGUE), each with its own rhythm and density envelope. Inspired by the
- * reference image's SHAPING / THE / FUTURE layered card composition, retuned
- * for the longer word lengths so they fit without overlap.
+ * Default composition: three RowFlows stacked vertically (D / F / D) forming
+ * one continuous tapestry. All flows share rows and rowSpacing from the
+ * composition, and the inter-flow gap equals rowSpacing — so the whole stack
+ * reads as one grid divided by which letter and density each segment uses.
  */
 export const DEFAULT_COMPOSITION: Composition = {
   canvas: { width: 1000, height: 800 },
@@ -20,52 +20,50 @@ export const DEFAULT_COMPOSITION: Composition = {
   // One font size for the whole composition — every word in every flow renders at this size.
   fontSize: 25,
   // Clear pixels around all four edges. No word ever extends past this.
-  edgePadding: 60,
+  edgePadding: 25,
+  // Rows per flow — same for every flow.
+  rows: 10,
+  // Vertical spacing — same between rows AND between flow segments.
+  rowSpacing: 24,
   loopDuration: 6,
   flows: [
     {
-      id: 'digital',
+      id: 'd-top',
       kind: 'row',
       enabled: true,
       params: {
-        word: 'DIGITAL',
-        rows: 8,
-        // Outer rows are densely packed, middle rows sparser.
-        density: { mode: 'tight-edges', min: 2, max: 5 },
+        word: 'D',
+        // Outer rows densely packed, middle rows sparser.
+        density: { mode: 'tight-edges', min: 12, max: 28 },
         xWave: { amplitude: 30, frequency: 0.6, phase: 0, phaseSpeed: 1, envelope: 'center-peak' },
         densityPulse: { amplitude: 0, phaseSpeed: 1 },
-        rowSpacing: 32,
         color: '#0a0a0a',
         jitter: { position: 2, rotation: 0.015, opacity: 0.12 },
       },
     },
     {
-      id: 'freedom',
+      id: 'f-mid',
       kind: 'row',
       enabled: true,
       params: {
-        word: 'FREEDOM',
-        rows: 10,
-        // Middle rows densest. Max kept low because FREEDOM is wide.
-        density: { mode: 'tight-middle', min: 3, max: 7 },
+        word: 'F',
+        // Middle rows densest.
+        density: { mode: 'tight-middle', min: 12, max: 36 },
         xWave: { amplitude: 18, frequency: 0.8, phase: 0.25, phaseSpeed: 1, envelope: 'center-peak' },
         densityPulse: { amplitude: 0, phaseSpeed: 1 },
-        rowSpacing: 28,
         color: '#0a0a0a',
         jitter: { position: 1.5, rotation: 0.012, opacity: 0.1 },
       },
     },
     {
-      id: 'dialogue',
+      id: 'd-bottom',
       kind: 'row',
       enabled: true,
       params: {
-        word: 'DIALOGUE',
-        rows: 7,
-        density: { mode: 'uniform', min: 4, max: 6 },
+        word: 'D',
+        density: { mode: 'uniform', min: 18, max: 22 },
         xWave: { amplitude: 22, frequency: 0.55, phase: 0.5, phaseSpeed: 1, envelope: 'center-peak' },
         densityPulse: { amplitude: 0, phaseSpeed: 1 },
-        rowSpacing: 30,
         color: '#0a0a0a',
         jitter: { position: 2, rotation: 0.015, opacity: 0.12 },
       },
@@ -73,7 +71,10 @@ export const DEFAULT_COMPOSITION: Composition = {
   ],
 };
 
-type CompositionMeta = Pick<Composition, 'bgColor' | 'loopDuration' | 'fontFamily' | 'edgePadding'>;
+type CompositionMeta = Pick<
+  Composition,
+  'bgColor' | 'loopDuration' | 'fontFamily' | 'edgePadding' | 'rows' | 'rowSpacing'
+>;
 
 interface Store {
   composition: Composition;
@@ -134,12 +135,10 @@ export const useStore = create<Store>((set) => ({
               kind: 'row',
               enabled: true,
               params: {
-                word: 'WORD',
-                rows: 6,
-                density: { mode: 'uniform', min: 4, max: 4 },
+                word: 'X',
+                density: { mode: 'uniform', min: 10, max: 15 },
                 xWave: { amplitude: 15, frequency: 0.5, phase: 0, phaseSpeed: 1, envelope: 'center-peak' },
                 densityPulse: { amplitude: 0, phaseSpeed: 1 },
-                rowSpacing: 30,
                 color: '#0a0a0a',
                 jitter: { position: 1.5, rotation: 0.012, opacity: 0.1 },
               },
