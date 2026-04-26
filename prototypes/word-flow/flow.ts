@@ -22,7 +22,14 @@ export type WordInstance = {
 };
 
 /** Density envelope shape: how word-count varies across rows. */
-export type DensityMode = 'uniform' | 'tight-middle' | 'tight-edges';
+export type DensityMode =
+  | 'uniform'
+  | 'tight-middle'   // V-shape: peak in middle, sparse at edges
+  | 'tight-edges'    // Λ-shape: sparse middle, dense edges
+  | 'linear-down'    // ramps from max (top) to min (bottom)
+  | 'linear-up'      // ramps from min (top) to max (bottom)
+  | 'sine'           // smoothly oscillates across rows (2 full cycles)
+  | 'random';        // deterministic per-row noise between min and max
 
 export interface RowFlowParams {
   word: string;
@@ -83,15 +90,31 @@ function countForRow(row: number, total: number, params: RowFlowParams): number 
   const rowFraction = row / (total - 1);                // 0..1
   const distFromCenter = Math.abs(rowFraction - 0.5) * 2; // 0 mid, 1 edges
   const { min, max, mode } = params.density;
+  const span = max - min;
   switch (mode) {
     case 'uniform':
       return Math.round((min + max) / 2);
     case 'tight-middle':
       // middle = max (dense), edges = min (sparse)
-      return Math.round(max - (max - min) * distFromCenter);
+      return Math.round(max - span * distFromCenter);
     case 'tight-edges':
       // middle = min (sparse), edges = max (dense)
-      return Math.round(min + (max - min) * distFromCenter);
+      return Math.round(min + span * distFromCenter);
+    case 'linear-down':
+      // top = max, bottom = min (decrescendo)
+      return Math.round(max - span * rowFraction);
+    case 'linear-up':
+      // top = min, bottom = max (crescendo)
+      return Math.round(min + span * rowFraction);
+    case 'sine': {
+      // Two full cycles across rows. wave ∈ [-1, 1]; map to [min, max].
+      const wave = Math.sin(rowFraction * Math.PI * 4); // 4π = 2 full cycles
+      return Math.round(min + (span / 2) * (wave + 1));
+    }
+    case 'random': {
+      // Deterministic per-row noise. Same row index always picks the same count.
+      return Math.round(min + hash01(row * 31 + 7) * span);
+    }
   }
 }
 

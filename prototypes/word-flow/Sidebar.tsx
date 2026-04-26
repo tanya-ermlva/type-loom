@@ -203,8 +203,12 @@ export function Sidebar() {
                 className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
               >
                 <option value="uniform">Uniform</option>
-                <option value="tight-middle">Tight middle (dense middle)</option>
-                <option value="tight-edges">Tight edges (dense edges)</option>
+                <option value="tight-middle">Tight middle (V-shape, dense middle)</option>
+                <option value="tight-edges">Tight edges (Λ-shape, dense edges)</option>
+                <option value="linear-down">Linear down (top → bottom)</option>
+                <option value="linear-up">Linear up (bottom → top)</option>
+                <option value="sine">Sine (oscillating)</option>
+                <option value="random">Random (per-row noise)</option>
               </select>
             </label>
             <Slider
