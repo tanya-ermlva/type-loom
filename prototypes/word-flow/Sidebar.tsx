@@ -153,41 +153,6 @@ export function Sidebar() {
       {selectedFlow ? (
         <div className="flex-1 overflow-y-auto p-3 space-y-3">
           <div>
-            <Slider
-              label="Rows"
-              value={selectedFlow.params.rows}
-              min={1}
-              max={20}
-              step={1}
-              onChange={(v) => update({ rows: v })}
-            />
-            <Slider
-              label="Row spacing (px)"
-              value={selectedFlow.params.rowSpacing}
-              min={10}
-              max={80}
-              step={1}
-              onChange={(v) => update({ rowSpacing: v })}
-            />
-            <Slider
-              label="Y center (px)"
-              value={selectedFlow.params.yCenter}
-              min={0}
-              max={composition.canvas.height}
-              step={1}
-              onChange={(v) => update({ yCenter: v })}
-            />
-            <Slider
-              label="Font size (px)"
-              value={selectedFlow.params.fontSize}
-              min={8}
-              max={80}
-              step={1}
-              onChange={(v) => update({ fontSize: v })}
-            />
-          </div>
-
-          <div className="pt-2 border-t border-gray-100">
             <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-2">Density</div>
             <label className="block text-xs mb-2">
               <select
