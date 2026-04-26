@@ -103,6 +103,8 @@ export interface Composition {
   fontFamily: string;
   /** Single font size shared by every word in every flow. */
   fontSize: number;
+  /** Clear pixels around all four canvas edges. No word ever extends past this. */
+  edgePadding: number;
   loopDuration: number;
   flows: Flow[];
 }
@@ -116,6 +118,15 @@ export interface Composition {
 function hash01(seed: number): number {
   const x = Math.sin(seed * 12.9898 + 78.233) * 43758.5453;
   return x - Math.floor(x);
+}
+
+/**
+ * Conservative word-width estimate (px). Slight over-estimate so that we err on
+ * the side of more clear space — safety over density. For uppercase sans-serif
+ * at common sizes, ~0.65 × fontSize per char captures most letters' advance.
+ */
+function approximateWordWidth(word: string, fontSize: number): number {
+  return word.length * fontSize * 0.65;
 }
 
 /**
@@ -175,6 +186,7 @@ export function evaluateRowFlow(
   loopDuration: number,
   fontSize: number,
   yCenter: number,
+  edgePadding: number,
 ): WordInstance[] {
   const out: WordInstance[] = [];
   const loop = Math.max(0.0001, loopDuration);
@@ -187,8 +199,19 @@ export function evaluateRowFlow(
     Math.sin(2 * Math.PI * params.densityPulse.phaseSpeed * (t / loop)) *
     params.densityPulse.amplitude;
 
-  const margin = canvasWidth * 0.06;
-  const usable = canvasWidth - 2 * margin;
+  // Per-flow safe margin: guarantees no word ever crosses edgePadding.
+  // Account for: half the word width (we draw centered), the wave shift the
+  // edge word will receive (depends on envelope — center-peak edges = 0), and
+  // worst-case jitter.
+  const envFactorAtEdge = envelopeFactor(params.xWave.envelope, 0);
+  const wordHalfWidth = approximateWordWidth(params.word, fontSize) / 2;
+  const safeMargin =
+    edgePadding +
+    wordHalfWidth +
+    Math.abs(params.xWave.amplitude) * envFactorAtEdge +
+    params.jitter.position;
+  const usable = Math.max(0, canvasWidth - 2 * safeMargin);
+  const margin = safeMargin;
 
   for (let r = 0; r < params.rows; r++) {
     const baseCount = countForRow(r, params.rows, params);
@@ -271,12 +294,14 @@ export function evaluateCircleFlow(
 }
 
 /**
- * Auto-layout: distributes enabled RowFlows vertically with even padding so
- * blocks never overlap. CircleFlows position themselves explicitly via
- * params.center and are not part of the row stack.
+ * Auto-layout: distributes enabled RowFlows vertically with edgePadding at top
+ * and bottom, and even gaps between blocks for any leftover space. CircleFlows
+ * position themselves explicitly via params.center and are not part of the row
+ * stack.
  *
- * If the total content height exceeds the canvas, padding clamps to 0 and
- * the bottom edge clips — better than mangling the locked row spacing.
+ * If the total content height exceeds the available space (canvas - 2×edgePadding),
+ * inner gaps clamp to 0 (blocks touch) and some bottom clipping is accepted —
+ * better than violating the locked row spacing or the edge padding contract.
  */
 function computeRowFlowYCenters(c: Composition): Map<string, number> {
   const enabledRowFlows = c.flows.filter(
@@ -284,13 +309,17 @@ function computeRowFlowYCenters(c: Composition): Map<string, number> {
   );
   const heights = enabledRowFlows.map((f) => f.params.rows * f.params.rowSpacing);
   const totalHeight = heights.reduce((sum, h) => sum + h, 0);
-  const padding = Math.max(0, (c.canvas.height - totalHeight) / (enabledRowFlows.length + 1));
+
+  const usableHeight = Math.max(0, c.canvas.height - 2 * c.edgePadding);
+  const innerGapsCount = Math.max(0, enabledRowFlows.length - 1);
+  const innerGap =
+    innerGapsCount > 0 ? Math.max(0, (usableHeight - totalHeight) / innerGapsCount) : 0;
 
   const map = new Map<string, number>();
-  let y = padding;
+  let y = c.edgePadding;
   for (let i = 0; i < enabledRowFlows.length; i++) {
     map.set(enabledRowFlows[i].id, y + heights[i] / 2);
-    y += heights[i] + padding;
+    y += heights[i] + innerGap;
   }
   return map;
 }
@@ -305,7 +334,15 @@ export function evaluate(c: Composition, t: number): WordInstance[] {
       case 'row': {
         const yCenter = rowYCenters.get(flow.id) ?? c.canvas.height / 2;
         all.push(
-          ...evaluateRowFlow(flow.params, t, c.canvas.width, c.loopDuration, c.fontSize, yCenter),
+          ...evaluateRowFlow(
+            flow.params,
+            t,
+            c.canvas.width,
+            c.loopDuration,
+            c.fontSize,
+            yCenter,
+            c.edgePadding,
+          ),
         );
         break;
       }

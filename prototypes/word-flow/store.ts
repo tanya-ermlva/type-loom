@@ -19,6 +19,8 @@ export const DEFAULT_COMPOSITION: Composition = {
   fontFamily: 'ui-sans-serif, system-ui, sans-serif',
   // One font size for the whole composition — every word in every flow renders at this size.
   fontSize: 25,
+  // Clear pixels around all four edges. No word ever extends past this.
+  edgePadding: 60,
   loopDuration: 6,
   flows: [
     {
@@ -71,7 +73,7 @@ export const DEFAULT_COMPOSITION: Composition = {
   ],
 };
 
-type CompositionMeta = Pick<Composition, 'bgColor' | 'loopDuration' | 'fontFamily'>;
+type CompositionMeta = Pick<Composition, 'bgColor' | 'loopDuration' | 'fontFamily' | 'edgePadding'>;
 
 interface Store {
   composition: Composition;

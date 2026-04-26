@@ -394,6 +394,14 @@ export function Sidebar() {
           </label>
         </div>
         <Slider
+          label="Edge padding (px)"
+          value={composition.edgePadding}
+          min={0}
+          max={200}
+          step={5}
+          onChange={(v) => updateCompositionMeta({ edgePadding: v })}
+        />
+        <Slider
           label="Loop duration (s)"
           value={composition.loopDuration}
           min={1}
