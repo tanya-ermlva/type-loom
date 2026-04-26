@@ -58,7 +58,6 @@ export interface RowFlowParams {
     phaseSpeed: number;  // turns per loop; integer keeps the loop seamless
   };
   rowSpacing: number;    // px between adjacent rows
-  yCenter: number;       // canvas y the block is centered on
   color: string;
   /** Deterministic per-instance noise — gives the printed-paper feel. */
   jitter: {
@@ -175,6 +174,7 @@ export function evaluateRowFlow(
   canvasWidth: number,
   loopDuration: number,
   fontSize: number,
+  yCenter: number,
 ): WordInstance[] {
   const out: WordInstance[] = [];
   const loop = Math.max(0.0001, loopDuration);
@@ -195,7 +195,7 @@ export function evaluateRowFlow(
     const count = Math.max(0, Math.round(baseCount + pulseDelta));
     if (count < 1) continue;
 
-    const y = params.yCenter + (r - (params.rows - 1) / 2) * params.rowSpacing;
+    const y = yCenter + (r - (params.rows - 1) / 2) * params.rowSpacing;
     const xWave = Math.sin(r * params.xWave.frequency + phaseRad) * params.xWave.amplitude;
 
     for (let i = 0; i < count; i++) {
@@ -270,14 +270,45 @@ export function evaluateCircleFlow(
   return out;
 }
 
+/**
+ * Auto-layout: distributes enabled RowFlows vertically with even padding so
+ * blocks never overlap. CircleFlows position themselves explicitly via
+ * params.center and are not part of the row stack.
+ *
+ * If the total content height exceeds the canvas, padding clamps to 0 and
+ * the bottom edge clips — better than mangling the locked row spacing.
+ */
+function computeRowFlowYCenters(c: Composition): Map<string, number> {
+  const enabledRowFlows = c.flows.filter(
+    (f): f is Extract<Flow, { kind: 'row' }> => f.enabled && f.kind === 'row',
+  );
+  const heights = enabledRowFlows.map((f) => f.params.rows * f.params.rowSpacing);
+  const totalHeight = heights.reduce((sum, h) => sum + h, 0);
+  const padding = Math.max(0, (c.canvas.height - totalHeight) / (enabledRowFlows.length + 1));
+
+  const map = new Map<string, number>();
+  let y = padding;
+  for (let i = 0; i < enabledRowFlows.length; i++) {
+    map.set(enabledRowFlows[i].id, y + heights[i] / 2);
+    y += heights[i] + padding;
+  }
+  return map;
+}
+
 export function evaluate(c: Composition, t: number): WordInstance[] {
   const all: WordInstance[] = [];
+  const rowYCenters = computeRowFlowYCenters(c);
+
   for (const flow of c.flows) {
     if (!flow.enabled) continue;
     switch (flow.kind) {
-      case 'row':
-        all.push(...evaluateRowFlow(flow.params, t, c.canvas.width, c.loopDuration, c.fontSize));
+      case 'row': {
+        const yCenter = rowYCenters.get(flow.id) ?? c.canvas.height / 2;
+        all.push(
+          ...evaluateRowFlow(flow.params, t, c.canvas.width, c.loopDuration, c.fontSize, yCenter),
+        );
         break;
+      }
       case 'circle':
         all.push(...evaluateCircleFlow(flow.params, t, c.loopDuration, c.fontSize));
         break;
