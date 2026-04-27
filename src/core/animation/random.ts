@@ -55,15 +55,6 @@ const ANIMATABLE_BY_TYPE: Record<TreatmentType, AnimatableParam[]> = {
   ],
 };
 
-/** Base-grid (config) params that are also animatable via treatmentId='config'. */
-const CONFIG_ANIMATABLE: AnimatableParam[] = [
-  { key: 'charSize',      min: 8, max: 200, step: 1 },
-  { key: 'rowSpacing',    min: 4, max: 200, step: 1 },
-  { key: 'columnSpacing', min: 0, max: 300, step: 1 },
-  { key: 'charSpacing',   min: 4, max: 200, step: 1 },
-  { key: 'edgePadding',   min: 0, max: 300, step: 1 },
-];
-
 const CURVES: readonly AnimationCurve[] = ['sine', 'triangle', 'sawtooth', 'ease-in-out'];
 const STAGGER_AXES: readonly StaggerAxis[] = ['x', 'y', 'radial', 'diagonal'];
 
@@ -81,23 +72,34 @@ function snap(value: number, step: number, min: number, max: number): number {
 }
 
 /**
+ * True iff there's at least one enabled treatment with animatable params —
+ * i.e. the random generator has something to work with. Used by the UI to
+ * disable the random button when there's nothing to animate.
+ */
+export function hasRandomTarget(treatments: Treatment[]): boolean {
+  return treatments.some(
+    (t) => t.enabled && (ANIMATABLE_BY_TYPE[t.type]?.length ?? 0) > 0,
+  );
+}
+
+/**
  * Build a random animation spec.
  *
- * Picks a random target — either an enabled treatment or the base config —
- * then a random animatable param on it, then random from/to spanning roughly
- * 40-90% of the param's range somewhere inside it. Curve and stagger are
- * also randomized. Returns null only if there are zero possible targets
- * (effectively never, since 'config' is always available).
+ * Picks a random enabled treatment, then a random animatable param on it,
+ * then random from/to spanning roughly 40-90% of the param's range. Curve
+ * and stagger are also randomized. Returns null when no enabled treatments
+ * exist — base-config animations are intentionally NOT a random target;
+ * they're available via the config panel's manual + Animate flow.
  *
  * Constraints:
  * - from ≠ to (we ensure visible movement by sizing span to 40%+)
  * - Both clamped + snapped to the param's step grid
- * - 50% chance of stagger when target is a treatment (config doesn't stagger)
+ * - 50% chance of stagger
  */
 export function buildRandomAnimation(treatments: Treatment[]): AnimationSpec | null {
   type Target = {
     treatmentId: string;
-    treatmentType?: TreatmentType;
+    treatmentType: TreatmentType;
     params: AnimatableParam[];
   };
   const targets: Target[] = [];
@@ -109,8 +111,6 @@ export function buildRandomAnimation(treatments: Treatment[]): AnimationSpec | n
       targets.push({ treatmentId: t.id, treatmentType: t.type, params });
     }
   }
-  // Config is always a valid target — it's animatable even with zero treatments.
-  targets.push({ treatmentId: 'config', params: CONFIG_ANIMATABLE });
 
   if (targets.length === 0) return null;
 
@@ -128,7 +128,7 @@ export function buildRandomAnimation(treatments: Treatment[]): AnimationSpec | n
   const from = snap(center - halfSpan, param.step, param.min, param.max);
   const to = snap(center + halfSpan, param.step, param.min, param.max);
 
-  const wantStagger = target.treatmentId !== 'config' && Math.random() < 0.5;
+  const wantStagger = Math.random() < 0.5;
   const staggerAmount = wantStagger ? Number((0.5 + Math.random() * 3.5).toFixed(1)) : 0;
   const staggerAxis = pick(STAGGER_AXES);
 

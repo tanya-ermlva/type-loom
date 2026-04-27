@@ -3,7 +3,7 @@ import { useStore } from '../state/store';
 import { exportCanvasAsPng } from '../core/export/png';
 import { exportCanvasAsVideo, pickMimeType } from '../core/export/video';
 import { exportPngSequence } from '../core/export/pngSequence';
-import { buildRandomAnimation } from '../core/animation/random';
+import { buildRandomAnimation, hasRandomTarget } from '../core/animation/random';
 import { ProjectsMenu } from './ProjectsMenu';
 
 interface TopBarProps {
@@ -103,14 +103,24 @@ export function TopBar({ canvasRef, onOpenProjects }: TopBarProps) {
       >
         ⌨ shortcuts
       </span>
-      <button
-        onClick={handleRandomAnimation}
-        disabled={!!busy}
-        className="px-2.5 py-1.5 text-sm border border-gray-200 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
-        title="Add a random animation to a random parameter on a random enabled treatment (or base config)"
-      >
-        🎲 Random anim
-      </button>
+      {(() => {
+        const canRandomize = hasRandomTarget(treatments);
+        const disabled = !!busy || !canRandomize;
+        return (
+          <button
+            onClick={handleRandomAnimation}
+            disabled={disabled}
+            className="px-2.5 py-1.5 text-sm border border-gray-200 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+            title={
+              canRandomize
+                ? 'Add a random animation to a random parameter on a random enabled treatment'
+                : 'Add at least one enabled treatment to enable this'
+            }
+          >
+            🎲 Random anim
+          </button>
+        );
+      })()}
       <div ref={menuRef} className="relative">
         <button
           onClick={() => setMenuOpen((o) => !o)}

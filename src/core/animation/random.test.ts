@@ -1,64 +1,81 @@
 import { describe, it, expect } from 'vitest';
-import { buildRandomAnimation } from './random';
+import { buildRandomAnimation, hasRandomTarget } from './random';
 import type { Treatment } from '../treatments/types';
 
-/**
- * The random generator's correctness contract is shape-based:
- * - Output is a valid AnimationSpec (or null only with no targets, which
- *   doesn't happen because 'config' is always available).
- * - from / to live in the param's documented range.
- * - duration > 0.
- * Run many iterations to catch any edge case from random sampling.
- */
-describe('buildRandomAnimation', () => {
-  const ITERATIONS = 200;
+const ITERATIONS = 200;
 
-  it('always returns a valid spec (config is always a valid target)', () => {
+const mockTreatment = (id: string, type: Treatment['type'], enabled: boolean): Treatment =>
+  ({ id, type, enabled, apply: () => ({} as never) }) as Treatment;
+
+describe('buildRandomAnimation', () => {
+  it('returns null when there are no enabled treatments', () => {
+    expect(buildRandomAnimation([])).toBeNull();
+  });
+
+  it('returns null when only disabled treatments exist', () => {
+    const treatments = [mockTreatment('d1', 'drift', false)];
     for (let i = 0; i < ITERATIONS; i++) {
-      const spec = buildRandomAnimation([]);
+      expect(buildRandomAnimation(treatments)).toBeNull();
+    }
+  });
+
+  it('returns a valid spec when at least one enabled treatment is present', () => {
+    const treatments = [mockTreatment('d1', 'drift', true)];
+    for (let i = 0; i < ITERATIONS; i++) {
+      const spec = buildRandomAnimation(treatments);
       expect(spec).not.toBeNull();
       expect(spec!.id).toBeTruthy();
       expect(spec!.paramKey).toBeTruthy();
       expect(spec!.duration).toBeGreaterThan(0);
+      expect(spec!.treatmentId).toBe('d1');
     }
   });
 
   it('produces from ≠ to (visible movement)', () => {
+    const treatments = [mockTreatment('d1', 'drift', true)];
     let differCount = 0;
     for (let i = 0; i < ITERATIONS; i++) {
-      const spec = buildRandomAnimation([])!;
+      const spec = buildRandomAnimation(treatments)!;
       if (spec.from !== spec.to) differCount++;
     }
-    // Allow a few collisions from snap-to-step on tiny ranges, but expect most to differ.
+    // Allow a few snap-to-step collisions on tiny ranges.
     expect(differCount).toBeGreaterThan(ITERATIONS * 0.9);
   });
 
-  it('targets enabled treatments more often than just config when available', () => {
-    const treatments: Treatment[] = [
-      { id: 'd1', type: 'drift',     enabled: true,  apply: () => ({} as never) } as Treatment,
-      { id: 't1', type: 'tint',      enabled: true,  apply: () => ({} as never) } as Treatment,
-      { id: 's1', type: 'silhouette', enabled: false, apply: () => ({} as never) } as Treatment,
+  it('never picks a disabled treatment when mixed with enabled ones', () => {
+    const treatments = [
+      mockTreatment('d1', 'drift', true),
+      mockTreatment('d2', 'drift', false),
+      mockTreatment('t1', 'tint',  true),
     ];
-    let configHits = 0;
-    let treatmentHits = 0;
     for (let i = 0; i < ITERATIONS; i++) {
       const spec = buildRandomAnimation(treatments)!;
-      if (spec.treatmentId === 'config') configHits++;
-      else treatmentHits++;
+      expect(['d1', 't1']).toContain(spec.treatmentId);
     }
-    // 3 targets total (drift, tint, config) — disabled silhouette excluded.
-    // ~33% expected for config. Treatments should be majority.
-    expect(treatmentHits).toBeGreaterThan(configHits);
   });
 
-  it('skips disabled treatments', () => {
-    const treatments: Treatment[] = [
-      { id: 'd1', type: 'drift', enabled: false, apply: () => ({} as never) } as Treatment,
+  it('never targets the base config (config animations stay manual-only)', () => {
+    const treatments = [
+      mockTreatment('d1', 'drift', true),
+      mockTreatment('t1', 'tint',  true),
     ];
     for (let i = 0; i < ITERATIONS; i++) {
       const spec = buildRandomAnimation(treatments)!;
-      // Only 'config' should ever be hit.
-      expect(spec.treatmentId).toBe('config');
+      expect(spec.treatmentId).not.toBe('config');
     }
+  });
+});
+
+describe('hasRandomTarget', () => {
+  it('false on empty input', () => {
+    expect(hasRandomTarget([])).toBe(false);
+  });
+
+  it('false when all treatments are disabled', () => {
+    expect(hasRandomTarget([mockTreatment('d1', 'drift', false)])).toBe(false);
+  });
+
+  it('true when at least one enabled treatment with animatable params exists', () => {
+    expect(hasRandomTarget([mockTreatment('d1', 'drift', true)])).toBe(true);
   });
 });
