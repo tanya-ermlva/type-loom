@@ -3,6 +3,7 @@ import { useStore } from '../state/store';
 import { exportCanvasAsPng } from '../core/export/png';
 import { exportCanvasAsVideo, pickMimeType } from '../core/export/video';
 import { exportPngSequence } from '../core/export/pngSequence';
+import { buildRandomAnimation } from '../core/animation/random';
 import { ProjectsMenu } from './ProjectsMenu';
 
 interface TopBarProps {
@@ -19,6 +20,7 @@ export function TopBar({ canvasRef, onOpenProjects }: TopBarProps) {
   const loopDuration = useStore((s) => s.loopDuration);
   const setPlaying = useStore((s) => s.setPlaying);
   const setCurrentTime = useStore((s) => s.setCurrentTime);
+  const addAnimation = useStore((s) => s.addAnimation);
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
@@ -61,6 +63,11 @@ export function TopBar({ canvasRef, onOpenProjects }: TopBarProps) {
     }
   };
 
+  const handleRandomAnimation = () => {
+    const spec = buildRandomAnimation(treatments);
+    if (spec) addAnimation(spec);
+  };
+
   const handleExportSequence = async () => {
     if (busy) return;
     setMenuOpen(false);
@@ -96,6 +103,14 @@ export function TopBar({ canvasRef, onOpenProjects }: TopBarProps) {
       >
         ⌨ shortcuts
       </span>
+      <button
+        onClick={handleRandomAnimation}
+        disabled={!!busy}
+        className="px-2.5 py-1.5 text-sm border border-gray-200 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+        title="Add a random animation to a random parameter on a random enabled treatment (or base config)"
+      >
+        🎲 Random anim
+      </button>
       <div ref={menuRef} className="relative">
         <button
           onClick={() => setMenuOpen((o) => !o)}
