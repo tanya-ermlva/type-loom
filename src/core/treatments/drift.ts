@@ -4,6 +4,7 @@ import type { Treatment } from './types';
 export type DriftAxis = 'x' | 'y' | 'both';
 export type DriftScope = 'character' | 'word';
 export type DriftWaveform = 'sine' | 'triangle' | 'square';
+export type DriftEnvelope = 'uniform' | 'center-peak' | 'edge-peak';
 
 export interface DriftParams {
   axis: DriftAxis;
@@ -13,6 +14,23 @@ export interface DriftParams {
   /** Phase offset in turns (0..1 = one full cycle). Animate 0→1 over loop for a traveling wave. */
   phase: number;
   waveform: DriftWaveform;
+  /** Across-row amplitude envelope: scales each cell's drift by its column position. */
+  envelope: DriftEnvelope;
+}
+
+/**
+ * Smooth (raised-cosine / Hann) envelope across a row.
+ * tFrac=0 leftmost, 0.5 center, 1 rightmost.
+ *
+ * - uniform: 1 everywhere (every cell drifts equally, original behavior)
+ * - center-peak: bell, 1 at center, 0 at edges (edge cells stand still)
+ * - edge-peak: inverse — center cells stand still, edges move
+ */
+function envelopeFactor(envelope: DriftEnvelope, tFrac: number): number {
+  if (envelope === 'uniform') return 1;
+  const distFromCenter = Math.abs(tFrac - 0.5) * 2;
+  const bell = (1 + Math.cos(distFromCenter * Math.PI)) / 2;
+  return envelope === 'center-peak' ? bell : 1 - bell;
 }
 
 /**
@@ -64,11 +82,15 @@ export function createDrift(params: DriftParams): Treatment {
       const yIndex = params.scope === 'word' ? Math.floor(col / wordLen) : col;
       const phaseRad = params.phase * Math.PI * 2;
 
+      // Across-row envelope: scales drift by column position so e.g. edge cells can stand still.
+      const colFrac = ctx.columns <= 1 ? 0.5 : col / (ctx.columns - 1);
+      const env = envelopeFactor(params.envelope, colFrac);
+
       const offsetX = (params.axis === 'x' || params.axis === 'both')
-        ? wave(params.waveform, row * params.frequency + phaseRad) * params.amplitude
+        ? wave(params.waveform, row * params.frequency + phaseRad) * params.amplitude * env
         : 0;
       const offsetY = (params.axis === 'y' || params.axis === 'both')
-        ? wave(params.waveform, yIndex * params.frequency + phaseRad) * params.amplitude
+        ? wave(params.waveform, yIndex * params.frequency + phaseRad) * params.amplitude * env
         : 0;
       return {
         ...cell,

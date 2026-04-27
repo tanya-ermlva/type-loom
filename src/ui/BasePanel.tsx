@@ -153,6 +153,11 @@ export function BasePanel() {
           onChange={(v) => updateConfig({ charSpacing: v })}
           onAnimate={() => quickAnimate('charSpacing', DEFAULT_BASE_CONFIG.charSpacing, config.charSpacing)}
         />
+        <Slider
+          label="Edge padding" value={config.edgePadding} min={0} max={300}
+          onChange={(v) => updateConfig({ edgePadding: v })}
+          onAnimate={() => quickAnimate('edgePadding', DEFAULT_BASE_CONFIG.edgePadding, config.edgePadding)}
+        />
 
         <div className="pt-2 space-y-2">
           <div className="flex items-center justify-between">
@@ -176,12 +181,14 @@ export function BasePanel() {
             { key: 'rowSpacing',     min: 4, max: 200, step: 1 },
             { key: 'columnSpacing',  min: 0, max: 300, step: 1 },
             { key: 'charSpacing',    min: 4, max: 200, step: 1 },
+            { key: 'edgePadding',    min: 0, max: 300, step: 1 },
           ]}
           currentParams={{
             charSize: config.charSize,
             rowSpacing: config.rowSpacing,
             columnSpacing: config.columnSpacing,
             charSpacing: config.charSpacing,
+            edgePadding: config.edgePadding,
           }}
         />
       </div>

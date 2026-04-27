@@ -32,6 +32,7 @@ export const DEFAULT_DRIFT_PARAMS: DriftParams = {
   scope: 'character',
   phase: 0,
   waveform: 'sine',
+  envelope: 'uniform',
 };
 
 export const DEFAULT_SPACING_PARAMS: SpacingParams = {

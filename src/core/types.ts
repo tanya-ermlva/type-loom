@@ -41,6 +41,10 @@ export interface BaseGridConfig {
   rowSpacing: number;       // vertical px between rows (line height)
   charSpacing: number;      // horizontal px between letters within a word ("T" -> "Y")
   columnSpacing: number;    // horizontal px gap between word repetitions ("TYPE" -> "TYPE")
+  /** Pixels of clear space around all four canvas edges. The base grid never
+   * places cells inside this margin — though large treatment amplitudes can
+   * still push individual cells past it. */
+  edgePadding: number;
   flow: 'per-row';          // v0.1 only supports per-row
   fgColor: string;
   bgColor: string;
@@ -54,6 +58,7 @@ export const DEFAULT_BASE_CONFIG: BaseGridConfig = {
   rowSpacing: 50,
   charSpacing: 30,
   columnSpacing: 20,
+  edgePadding: 40,
   flow: 'per-row',
   fgColor: '#1a1a4d',
   bgColor: '#f0ead6',

@@ -43,9 +43,18 @@ export function SpacingCard({ treatment, params }: SpacingCardProps) {
             onChange={(e) => updateParams({ pattern: e.target.value as SpacingPattern })}
             className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
           >
-            <option value="tight-middle">Tight middle</option>
-            <option value="tight-edges">Tight edges</option>
+            <option value="uniform">Uniform (no variation)</option>
+            <option value="tight-middle">Tight middle (V-shape)</option>
+            <option value="tight-edges">Tight edges (Λ-shape)</option>
+            <option value="bell">Bell (smooth tight middle)</option>
+            <option value="valley">Valley (smooth tight edges)</option>
+            <option value="linear-down">Linear down (top → bottom)</option>
+            <option value="linear-up">Linear up (bottom → top)</option>
+            <option value="stepped">Stepped (3 plateaus)</option>
             <option value="sine">Sine wave</option>
+            <option value="spike">Spike (single tight row)</option>
+            <option value="zebra">Zebra (alternating)</option>
+            <option value="random">Random (per-row noise)</option>
           </select>
         </label>
         <Slider

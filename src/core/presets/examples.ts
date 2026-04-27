@@ -157,7 +157,7 @@ export const EXAMPLES: Example[] = [
           id: 'grw-2',
           type: 'drift',
           enabled: true,
-          params: { axis: 'both', amplitude: 22, frequency: 0.45, scope: 'character', phase: 0, waveform: 'sine' },
+          params: { axis: 'both', amplitude: 22, frequency: 0.45, scope: 'character', phase: 0, waveform: 'sine', envelope: 'uniform' },
           mask: null,
         },
       ],

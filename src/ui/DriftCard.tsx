@@ -1,6 +1,6 @@
 import { useStore } from '../state/store';
 import type { Treatment } from '../core/treatments/types';
-import { createDrift, type DriftParams, type DriftAxis, type DriftScope, type DriftWaveform } from '../core/treatments/drift';
+import { createDrift, type DriftParams, type DriftAxis, type DriftScope, type DriftWaveform, type DriftEnvelope } from '../core/treatments/drift';
 import { Slider } from './controls/Slider';
 import { AnimationsList } from './AnimationsList';
 import { MaskControls } from './MaskControls';
@@ -86,6 +86,19 @@ export function DriftCard({ treatment, params }: DriftCardProps) {
           >
             <option value="character">Character (each letter)</option>
             <option value="word">Word (letters locked together)</option>
+          </select>
+        </label>
+        <label className="block text-sm">
+          <div className="text-gray-700 mb-1">Envelope</div>
+          <select
+            value={params.envelope}
+            onChange={(e) => updateParams({ envelope: e.target.value as DriftEnvelope })}
+            className="w-full border border-gray-300 rounded px-2 py-1 text-sm bg-white focus:outline-none focus:border-blue-400"
+            title="Across-row amplitude shape — scales drift by column position."
+          >
+            <option value="uniform">Uniform (every cell drifts equally)</option>
+            <option value="center-peak">Center peak (edges still, center moves)</option>
+            <option value="edge-peak">Edge peak (center still, edges move)</option>
           </select>
         </label>
         <MaskControls treatment={treatment} />
