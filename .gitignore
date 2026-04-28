@@ -22,3 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Brainstorming companion sessions (local mockups + persisted state)
+.superpowers/
+
+# Playwright artifacts from local browser testing
+.playwright-mcp/

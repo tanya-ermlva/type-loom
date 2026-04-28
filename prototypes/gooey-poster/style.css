@@ -1,0 +1,59 @@
+@import "tailwindcss";
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+body {
+  background: #1a1a1c;
+  color: #e5e5e7;
+}
+
+.poster-canvas {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.poster-text {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.poster-text.layer-clean,
+.poster-text.layer-gooey {
+  position: absolute;
+  inset: 0;
+  padding: inherit;
+}
+
+.poster-text.layer-gooey {
+  filter: url(#gooey-poster-filter);
+  will-change: filter;
+}
+
+.word {
+  display: inline;
+  cursor: pointer;
+  transition: outline-color 0.1s;
+  outline: 1px solid transparent;
+  outline-offset: 1px;
+  border-radius: 1px;
+}
+
+.words-mode .word:hover {
+  outline-color: rgba(255, 255, 255, 0.35);
+}
+
+.word.gooey-on {
+  filter: url(#gooey-poster-filter);
+  display: inline-block;
+}
+
+[contenteditable="true"] {
+  outline: 2px dashed rgba(255, 255, 255, 0.4);
+  outline-offset: 4px;
+}

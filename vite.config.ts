@@ -16,6 +16,8 @@ export default defineConfig({
         main: resolve(__dirname, 'index.html'),
         // Word-flow prototype (separate experimental app, shares deps only)
         wordFlow: resolve(__dirname, 'prototypes/word-flow/index.html'),
+        // Gooey poster playground prototype
+        gooeyPoster: resolve(__dirname, 'prototypes/gooey-poster/index.html'),
       },
     },
   },
