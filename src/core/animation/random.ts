@@ -47,8 +47,10 @@ const ANIMATABLE_BY_TYPE: Record<TreatmentType, AnimatableParam[]> = {
     { key: 'seed', min: 0, max: 100, step: 1 },
   ],
   charScramble: [
+    // settleStart / staggerAmount are NOT animatable: they're per-frame
+    // thresholds that conflict with cell-time comparison. Use treatment's
+    // built-in Stagger (s) for wave settling.
     { key: 'flipsPerSecond', min: 1, max: 60, step: 1 },
-    { key: 'settleStart',    min: 0, max: 10, step: 0.1 },
   ],
   charField: [
     { key: 'scroll', min: 0, max: 1, step: 0.01 },

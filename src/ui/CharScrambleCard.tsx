@@ -27,13 +27,14 @@ export function CharScrambleCard({ treatment, params }: CharScrambleCardProps) {
     updateTreatment(treatment.id, next);
   };
 
-  const animatableParams = params.mode === 'settle'
-    ? [
-        { key: 'flipsPerSecond', min: 1, max: 60, step: 1 },
-        { key: 'settleStart', min: 0, max: 10, step: 0.1 },
-        { key: 'staggerAmount', min: 0, max: 10, step: 0.1 },
-      ]
-    : [{ key: 'flipsPerSecond', min: 1, max: 60, step: 1 }];
+  // Only flipsPerSecond is exposed as animatable. settleStart and staggerAmount
+  // are read by the treatment every frame as thresholds — animating them with
+  // its own stagger creates a moving threshold that fights with cell-time
+  // comparison and produces flicker. For wave-style staggered settling, use
+  // the treatment's built-in Stagger (s) slider instead.
+  const animatableParams = [
+    { key: 'flipsPerSecond', min: 1, max: 60, step: 1 },
+  ];
 
   return (
     <div className="border border-gray-200 rounded-md p-3 bg-white">
