@@ -3,6 +3,7 @@ import { useStore } from '../state/store';
 import { Slider } from './controls/Slider';
 import type { TreatmentType } from '../core/treatments/types';
 import type { AnimationSpec, AnimationCurve, StaggerAxis } from '../core/animation/types';
+import { STAGGER_AXIS_OPTIONS } from '../core/animation/types';
 import type { MaskParams } from '../core/mask/types';
 
 export interface AnimatableParam {
@@ -222,10 +223,9 @@ export function AnimationsList({
                       className={`${SELECT_CLS} disabled:opacity-50 disabled:cursor-not-allowed`}
                       title={staggerDisabled ? 'Set stagger > 0 to enable' : ''}
                     >
-                      <option value="x">x</option>
-                      <option value="y">y</option>
-                      <option value="radial">radial</option>
-                      <option value="diagonal">diagonal</option>
+                      {STAGGER_AXIS_OPTIONS.map((o) => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                      ))}
                     </select>
                   </label>
                 )}

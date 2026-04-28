@@ -56,7 +56,13 @@ const ANIMATABLE_BY_TYPE: Record<TreatmentType, AnimatableParam[]> = {
 };
 
 const CURVES: readonly AnimationCurve[] = ['sine', 'triangle', 'sawtooth', 'ease-in-out'];
-const STAGGER_AXES: readonly StaggerAxis[] = ['x', 'y', 'radial', 'diagonal'];
+const STAGGER_AXES: readonly StaggerAxis[] = [
+  'x', 'x-reverse',
+  'y', 'y-reverse',
+  'diagonal', 'anti-diagonal',
+  'radial', 'radial-in',
+  'random',
+];
 
 function pick<T>(arr: readonly T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];

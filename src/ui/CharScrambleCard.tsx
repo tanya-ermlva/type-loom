@@ -3,6 +3,7 @@ import type { Treatment } from '../core/treatments/types';
 import { createCharScramble, type CharScrambleParams, type CharScrambleMode } from '../core/treatments/charScramble';
 import { DEFAULT_CHAR_SCRAMBLE_PARAMS } from '../core/treatments/defaults';
 import type { StaggerAxis } from '../core/animation/types';
+import { STAGGER_AXIS_OPTIONS } from '../core/animation/types';
 import { Slider } from './controls/Slider';
 import { PoolField } from './controls/PoolField';
 import { AnimationsList } from './AnimationsList';
@@ -88,10 +89,9 @@ export function CharScrambleCard({ treatment, params }: CharScrambleCardProps) {
                 onChange={(e) => updateParams({ staggerAxis: e.target.value as StaggerAxis })}
                 className="w-full border border-gray-300 rounded px-2 py-1 text-sm bg-white focus:outline-none focus:border-blue-400"
               >
-                <option value="x">x</option>
-                <option value="y">y</option>
-                <option value="radial">radial</option>
-                <option value="diagonal">diagonal</option>
+                {STAGGER_AXIS_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
               </select>
             </label>
           </>

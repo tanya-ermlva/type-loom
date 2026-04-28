@@ -2,7 +2,8 @@ import type { AnimationSpec, StaggerAxis } from './types';
 
 /**
  * Compute the per-cell stagger fraction (0..1) for the given (row, col)
- * within a grid of (rows, columns).
+ * within a grid of (rows, columns). Used to delay each cell's animation
+ * proportionally to its position along the chosen axis.
  */
 export function staggerFraction(
   row: number,
@@ -11,20 +12,38 @@ export function staggerFraction(
   columns: number,
   axis: StaggerAxis,
 ): number {
+  const xf = columns <= 1 ? 0 : col / (columns - 1);
+  const yf = rows <= 1 ? 0 : row / (rows - 1);
   switch (axis) {
     case 'x':
-      return columns <= 1 ? 0 : col / (columns - 1);
+      return xf;
+    case 'x-reverse':
+      return 1 - xf;
     case 'y':
-      return rows <= 1 ? 0 : row / (rows - 1);
+      return yf;
+    case 'y-reverse':
+      return 1 - yf;
+    case 'diagonal':
+      return (xf + yf) / 2;
+    case 'anti-diagonal':
+      // Top-right (xf=1, yf=0) → bottom-left (xf=0, yf=1)
+      return ((1 - xf) + yf) / 2;
     case 'radial': {
-      const nx = columns <= 1 ? 0 : (col / (columns - 1)) * 2 - 1;
-      const ny = rows <= 1 ? 0 : (row / (rows - 1)) * 2 - 1;
+      const nx = xf * 2 - 1;
+      const ny = yf * 2 - 1;
       return Math.min(1, Math.sqrt(nx * nx + ny * ny) / Math.SQRT2);
     }
-    case 'diagonal': {
-      const xf = columns <= 1 ? 0 : col / (columns - 1);
-      const yf = rows <= 1 ? 0 : row / (rows - 1);
-      return (xf + yf) / 2;
+    case 'radial-in': {
+      const nx = xf * 2 - 1;
+      const ny = yf * 2 - 1;
+      return 1 - Math.min(1, Math.sqrt(nx * nx + ny * ny) / Math.SQRT2);
+    }
+    case 'random': {
+      // Deterministic per-cell hash — same row/col always picks the same fraction,
+      // so the chaotic burst is stable across frames (no flicker).
+      const seed = row * 73856093 ^ col * 19349663;
+      const x = Math.sin(seed * 12.9898 + 78.233) * 43758.5453;
+      return x - Math.floor(x);
     }
   }
 }
