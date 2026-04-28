@@ -13,6 +13,9 @@ export interface CharScrambleParams {
   flipsPerSecond: number;
   staggerAmount: number;   // sec; settle mode only
   staggerAxis: StaggerAxis;
+  /** When set, scrambled (non-settled) characters render in this color.
+   * null = inherit the cell's existing color (back-compat default). */
+  scrambleColor: string | null;
 }
 
 /**
@@ -41,7 +44,13 @@ export function createCharScramble(params: CharScrambleParams): Treatment {
       }
 
       const flipIndex = Math.floor(ctx.t * params.flipsPerSecond + cellHash * params.pool.length);
-      return { ...cell, char: pickFromPool(params.pool, flipIndex) };
+      return {
+        ...cell,
+        char: pickFromPool(params.pool, flipIndex),
+        // Optional override: scrambled chars get a custom color while flickering;
+        // settled cells (early-returned above) keep cell.color untouched.
+        color: params.scrambleColor ?? cell.color,
+      };
     },
   };
 }

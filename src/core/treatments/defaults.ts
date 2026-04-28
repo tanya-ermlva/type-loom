@@ -78,6 +78,7 @@ export const DEFAULT_CHAR_SCRAMBLE_PARAMS: CharScrambleParams = {
   flipsPerSecond: 12,
   staggerAmount: 1.5,
   staggerAxis: 'y',
+  scrambleColor: null,
 };
 
 export const DEFAULT_CHAR_FIELD_PARAMS: CharFieldParams = {

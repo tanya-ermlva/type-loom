@@ -195,6 +195,7 @@ export const EXAMPLES: Example[] = [
             flipsPerSecond: 18,
             staggerAmount: 2.5,
             staggerAxis: 'y',
+            scrambleColor: null,
           },
           mask: null,
         },

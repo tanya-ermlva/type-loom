@@ -97,6 +97,34 @@ export function CharScrambleCard({ treatment, params }: CharScrambleCardProps) {
           </>
         )}
 
+        <label className="block text-sm">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-gray-700">Scramble color</span>
+            <input
+              type="checkbox"
+              checked={params.scrambleColor !== null}
+              onChange={(e) =>
+                updateParams({
+                  scrambleColor: e.target.checked ? '#ffffff' : null,
+                })
+              }
+              className="cursor-pointer"
+              title="Override the color of scrambled (non-settled) characters"
+            />
+          </div>
+          {params.scrambleColor !== null && (
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={params.scrambleColor}
+                onChange={(e) => updateParams({ scrambleColor: e.target.value })}
+                className="h-7 w-10 border border-gray-300 rounded cursor-pointer"
+              />
+              <span className="font-mono text-[10px] text-gray-400">{params.scrambleColor}</span>
+            </div>
+          )}
+        </label>
+
         <MaskControls treatment={treatment} />
         <AnimationsList
           treatmentId={treatment.id}

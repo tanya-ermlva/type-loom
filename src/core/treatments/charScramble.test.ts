@@ -17,7 +17,7 @@ describe('Char: Scramble (Settle mode)', () => {
     // settleStart=0, staggerAmount=0 → all cells settle at t=0
     const t = createCharScramble({
       pool: 'ABC', mode: 'settle', settleStart: 0, flipsPerSecond: 12,
-      staggerAmount: 0, staggerAxis: 'x',
+      staggerAmount: 0, staggerAxis: 'x', scrambleColor: null,
     });
     expect(t.apply(baseCell, 0, 0, ctx(5, 5, 0.001)).char).toBe('X');
   });
@@ -26,7 +26,7 @@ describe('Char: Scramble (Settle mode)', () => {
     // settleStart=2, no stagger → no cell settles before t=2
     const t = createCharScramble({
       pool: 'ABC', mode: 'settle', settleStart: 2, flipsPerSecond: 12,
-      staggerAmount: 0, staggerAxis: 'x',
+      staggerAmount: 0, staggerAxis: 'x', scrambleColor: null,
     });
     const result = t.apply(baseCell, 0, 0, ctx(5, 5, 1));
     expect(['A', 'B', 'C']).toContain(result.char);
@@ -36,7 +36,7 @@ describe('Char: Scramble (Settle mode)', () => {
     // staggerAmount=2 along y. Row 4 of 5 → fraction 1.0 → settles 2s after row 0.
     const t = createCharScramble({
       pool: 'ABC', mode: 'settle', settleStart: 0, flipsPerSecond: 12,
-      staggerAmount: 2, staggerAxis: 'y',
+      staggerAmount: 2, staggerAxis: 'y', scrambleColor: null,
     });
     // At t=0.5: row 0 has settled (settle time = 0); row 4 hasn't (settle time = 2)
     expect(t.apply(baseCell, 0, 0, ctx(5, 5, 0.5)).char).toBe('X');
@@ -48,7 +48,7 @@ describe('Char: Scramble (Continuous mode)', () => {
   it('always returns a pool char regardless of t', () => {
     const t = createCharScramble({
       pool: 'ABC', mode: 'continuous', settleStart: 0, flipsPerSecond: 12,
-      staggerAmount: 0, staggerAxis: 'x',
+      staggerAmount: 0, staggerAxis: 'x', scrambleColor: null,
     });
     for (const time of [0, 1, 2, 5, 100]) {
       expect(['A', 'B', 'C']).toContain(t.apply(baseCell, 0, 0, ctx(5, 5, time)).char);
@@ -58,7 +58,7 @@ describe('Char: Scramble (Continuous mode)', () => {
   it('changes the displayed char over time', () => {
     const t = createCharScramble({
       pool: 'ABCDEFGH', mode: 'continuous', settleStart: 0, flipsPerSecond: 30,
-      staggerAmount: 0, staggerAxis: 'x',
+      staggerAmount: 0, staggerAxis: 'x', scrambleColor: null,
     });
     const chars = new Set<string>();
     for (let i = 0; i < 30; i++) {
@@ -72,7 +72,7 @@ describe('Char: Scramble (general)', () => {
   it('returns the cell unchanged when pool is empty', () => {
     const t = createCharScramble({
       pool: '', mode: 'continuous', settleStart: 0, flipsPerSecond: 12,
-      staggerAmount: 0, staggerAxis: 'x',
+      staggerAmount: 0, staggerAxis: 'x', scrambleColor: null,
     });
     expect(t.apply(baseCell, 0, 0, ctx(5, 5, 1)).char).toBe('X');
   });
