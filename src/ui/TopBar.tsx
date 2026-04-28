@@ -99,7 +99,7 @@ export function TopBar({ canvasRef, onOpenProjects }: TopBarProps) {
       />
       <span
         className="text-[11px] text-gray-400 hidden sm:inline"
-        title="Space — play / pause&#10;R — randomize palette&#10;Esc — close menus / blur input&#10;Shift+Arrow on a slider — 10× step"
+        title="Space — play / pause&#10;R — randomize palette&#10;⌘Z — undo&#10;⌘⇧Z — redo&#10;⌘S — save&#10;Esc — close menus / blur input&#10;Shift+Arrow on a slider — 10× step"
       >
         ⌨ shortcuts
       </span>

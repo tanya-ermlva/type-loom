@@ -9,7 +9,7 @@ import { useStore } from './state/store';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { usePlaybackLoop } from './hooks/usePlaybackLoop';
 import { useAutoSaveDraft } from './hooks/useAutoSaveDraft';
-import { getDraft } from './core/persistence/storage';
+import { getDraft, captureThumbnail } from './core/persistence/storage';
 
 export default function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -17,6 +17,12 @@ export default function App() {
   const setPlaying = useStore((s) => s.setPlaying);
   const randomizePalette = useStore((s) => s.randomizePalette);
   const loadSnapshot = useStore((s) => s.loadSnapshot);
+  const undo = useStore((s) => s.undo);
+  const redo = useStore((s) => s.redo);
+  const currentProjectId = useStore((s) => s.currentProjectId);
+  const currentProjectName = useStore((s) => s.currentProjectName);
+  const saveCurrentProject = useStore((s) => s.saveCurrentProject);
+  const saveAsNewProject = useStore((s) => s.saveAsNewProject);
   const [projectsOpen, setProjectsOpen] = useState(false);
 
   usePlaybackLoop();
@@ -31,12 +37,29 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const handleSaveShortcut = () => {
+    let thumb: string | undefined;
+    if (canvasRef.current) {
+      try { thumb = captureThumbnail(canvasRef.current); } catch { /* skip thumb */ }
+    }
+    if (currentProjectId) {
+      saveCurrentProject(currentProjectName, thumb);
+    } else {
+      const name = prompt('Project name', currentProjectName === 'Untitled' ? '' : currentProjectName);
+      if (!name?.trim()) return;
+      saveAsNewProject(name.trim(), thumb);
+    }
+  };
+
   useKeyboardShortcuts({
     onPlayPause: () => setPlaying(!isPlaying),
     onRandomize: randomizePalette,
     onEscape: () => {
       (document.activeElement as HTMLElement | null)?.blur?.();
     },
+    onUndo: undo,
+    onRedo: redo,
+    onSave: handleSaveShortcut,
   });
 
   return (
