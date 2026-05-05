@@ -85,6 +85,8 @@ export interface GlobalParams {
   /** Canvas background color (hex). Independent of the palette presets —
    *  user can pick any color via the color picker or hex input. */
   backgroundColor: string;
+  /** Canvas aspect / dimensions preset. Drives SVG viewBox + export size. */
+  canvasFormat: 'a4' | '16:9';
 }
 
 export interface Letter {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useStore } from '../store';
+import { canvasSize, useStore } from '../store';
 import {
   deleteProject,
   duplicateProject,
@@ -93,14 +93,18 @@ export function ProjectsModal({ open, onClose }: Props) {
             </p>
           )}
           <div className="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-4">
-            {projects.map((p) => (
+            {projects.map((p) => {
+              const fmt = p.snapshot.globals.canvasFormat ?? 'a4';
+              const { width: w, height: h } = canvasSize(fmt);
+              return (
               <div
                 key={p.id}
                 className="bg-zinc-950 border border-zinc-800 rounded overflow-hidden flex flex-col"
               >
                 <button
                   onClick={() => handleLoad(p)}
-                  className="aspect-[1190/1684] bg-zinc-800 hover:opacity-90 transition-opacity"
+                  className="bg-zinc-800 hover:opacity-90 transition-opacity"
+                  style={{ aspectRatio: `${w} / ${h}` }}
                   title="Load this project"
                 >
                   {p.thumbnail ? (
@@ -159,7 +163,8 @@ export function ProjectsModal({ open, onClose }: Props) {
                   </div>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>

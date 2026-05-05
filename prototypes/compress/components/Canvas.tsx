@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { CANVAS_H, CANVAS_W, WORD_COLORS, useStore } from '../store';
+import { canvasSize, WORD_COLORS, useStore } from '../store';
 import { buildRows, fieldAtProgress } from '../compress';
 import type { Letter } from '../types';
 
@@ -26,6 +26,7 @@ export function Canvas() {
   const selectField = useStore((s) => s.selectField);
   const updateField = useStore((s) => s.updateField);
   const progress = useStore((s) => s.progress);
+  const { width: CANVAS_W, height: CANVAS_H } = canvasSize(globals.canvasFormat);
 
   // Effective fields = fields with their force center interpolated to the
   // current playback progress. When progress = 0 (paused at start) this is

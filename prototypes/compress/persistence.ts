@@ -141,6 +141,9 @@ export async function captureThumbnail(
   width = 200,
   height = 280,
 ): Promise<string | undefined> {
+  // Caller passes target output dimensions; for non-A4 (e.g. 16:9) the
+  // caller should adjust them so the thumbnail's aspect matches the
+  // poster's, otherwise the thumbnail will look distorted.
   const clone = svg.cloneNode(true) as SVGSVGElement;
   clone.querySelectorAll('.field-handle').forEach((el) => el.remove());
 

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Canvas } from './components/Canvas';
 import { Panel } from './components/Panel';
 import { ProjectsModal } from './components/ProjectsModal';
-import { CANVAS_H, CANVAS_W, useStore } from './store';
+import { canvasSize, useStore } from './store';
 import { buildRows, fieldAtProgress } from './compress';
 import { exportPngFromSvg, exportVideo, renderRows, type VideoFormat } from './export';
 import { captureThumbnail, saveProject } from './persistence';
@@ -40,7 +40,14 @@ export default function App() {
     if (!name || !name.trim()) return;
     const svg = document.querySelector('main svg') as SVGSVGElement | null;
     const { globals } = useStore.getState();
-    const thumbnail = svg ? await captureThumbnail(svg, globals.backgroundColor) : undefined;
+    // Thumb dims preserve the canvas aspect so it doesn't squish in the modal.
+    const { width: cw, height: ch } = canvasSize(globals.canvasFormat);
+    const longSide = 280;
+    const thumbW = Math.round(cw >= ch ? longSide : (longSide * cw) / ch);
+    const thumbH = Math.round(ch >= cw ? longSide : (longSide * ch) / cw);
+    const thumbnail = svg
+      ? await captureThumbnail(svg, globals.backgroundColor, thumbW, thumbH)
+      : undefined;
     saveProject(name.trim(), toSnapshot(), thumbnail);
   }
 
@@ -51,9 +58,10 @@ export default function App() {
     const svg = document.querySelector('main svg') as SVGSVGElement | null;
     if (!svg) return;
     const { globals } = useStore.getState();
+    const { width, height } = canvasSize(globals.canvasFormat);
     setBusy('png');
     try {
-      await exportPngFromSvg(svg, CANVAS_W, CANVAS_H, globals.backgroundColor);
+      await exportPngFromSvg(svg, width, height, globals.backgroundColor);
     } catch (e) {
       // eslint-disable-next-line no-alert
       alert((e as Error).message);
@@ -64,6 +72,7 @@ export default function App() {
 
   async function onExportVideo(format: VideoFormat) {
     const { fields, globals } = useStore.getState();
+    const { width: CANVAS_W, height: CANVAS_H } = canvasSize(globals.canvasFormat);
 
     setBusy('video');
     try {

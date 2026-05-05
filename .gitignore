@@ -28,3 +28,4 @@ dist-ssr
 
 # Playwright artifacts from local browser testing
 .playwright-mcp/
+.claude/

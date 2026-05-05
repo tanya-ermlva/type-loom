@@ -3,10 +3,24 @@ import { persist } from 'zustand/middleware';
 import type { Alignment, FalloffKind, Field, GlobalParams } from './types';
 import type { ProjectSnapshot } from './persistence';
 
-// A4 portrait at 100 dpi-ish. Keeps the unit small enough for the canvas
-// shadow / sidebar layout but stays in the right proportions.
-export const CANVAS_W = 1190;
-export const CANVAS_H = 1684;
+// Available canvas formats. Switching format only changes viewBox + export
+// size — field positions stay in absolute pixels, so a drag may be needed
+// after a format change to recompose for the new aspect.
+export const CANVAS_FORMATS = {
+  'a4': { width: 1190, height: 1684, label: 'A4' },
+  '16:9': { width: 1920, height: 1080, label: '16:9' },
+} as const;
+
+export type CanvasFormatId = keyof typeof CANVAS_FORMATS;
+
+export function canvasSize(format: CanvasFormatId) {
+  return CANVAS_FORMATS[format];
+}
+
+// Legacy constants — used for default field positions in initial state.
+// Run-time rendering reads dimensions via canvasSize(globals.canvasFormat).
+export const CANVAS_W = CANVAS_FORMATS['a4'].width;
+export const CANVAS_H = CANVAS_FORMATS['a4'].height;
 
 // Color palette derived from Tatiana's reference photos: navy / green / red /
 // brown / pink (cream stool image). These are the only colors in the
@@ -80,6 +94,7 @@ const initialGlobals: GlobalParams = {
   wordBlobWobble: 46,
   wordColors: ['#ff79bc', '#ff3300', '#47a966', ...WORD_COLORS.slice(3)],
   backgroundColor: '#d1d1d1',
+  canvasFormat: 'a4',
 };
 
 type State = {

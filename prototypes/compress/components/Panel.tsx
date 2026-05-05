@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { PALETTE, useStore } from '../store';
+import { CANVAS_FORMATS, PALETTE, useStore, type CanvasFormatId } from '../store';
 import type { Alignment, FalloffKind } from '../types';
 import { FalloffPreview } from './FalloffPreview';
 
@@ -74,11 +74,21 @@ function TextGridSection() {
   const rowCount = useStore((s) => s.globals.rowCount);
   const letterSize = useStore((s) => s.globals.letterSize);
   const alignment = useStore((s) => s.globals.alignment);
+  const canvasFormat = useStore((s) => s.globals.canvasFormat);
   const updateGlobals = useStore((s) => s.updateGlobals);
   const setAlignment = useStore((s) => s.setAlignment);
 
   return (
     <Section title="Text & Grid">
+      <Field label="Format">
+        <ButtonGroup<CanvasFormatId>
+          options={(Object.keys(CANVAS_FORMATS) as CanvasFormatId[]).map((id) => ({
+            id, label: CANVAS_FORMATS[id].label,
+          }))}
+          value={canvasFormat}
+          onChange={(v) => updateGlobals({ canvasFormat: v })}
+        />
+      </Field>
       <Field label="Word">
         <input
           type="text"
