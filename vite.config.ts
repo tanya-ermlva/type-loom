@@ -18,6 +18,8 @@ export default defineConfig({
         wordFlow: resolve(__dirname, 'prototypes/word-flow/index.html'),
         // Gooey poster playground prototype
         gooeyPoster: resolve(__dirname, 'prototypes/gooey-poster/index.html'),
+        // Compress: ellipse force fields squeeze/push letters in a grid
+        compress: resolve(__dirname, 'prototypes/compress/index.html'),
       },
     },
   },
