@@ -89,7 +89,7 @@ function TextGridSection() {
       </Field>
       <Slider label="Chars/row" value={charCount} min={1} max={48}
         onChange={(v) => updateGlobals({ charCount: Math.round(v) })} />
-      <Slider label="Rows" value={rowCount} min={3} max={120}
+      <Slider label="Rows" value={rowCount} min={1} max={120}
         onChange={(v) => updateGlobals({ rowCount: Math.round(v) })} />
       <Slider label="Letter size" value={letterSize} min={6} max={80} step={1}
         onChange={(v) => updateGlobals({ letterSize: v })} />
