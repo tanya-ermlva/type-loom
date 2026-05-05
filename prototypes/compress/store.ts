@@ -309,7 +309,7 @@ export const useStore = create<State & Actions>()(
         }));
         // backgroundColor is new — backfill from the persisted paletteIndex
         // if it's missing so users keep their last canvas color.
-        const persistedGlobals = p.globals ?? {};
+        const persistedGlobals: Partial<GlobalParams> = p.globals ?? {};
         const paletteIdx = p.paletteIndex ?? 0;
         const backgroundColor =
           persistedGlobals.backgroundColor ?? PALETTE[paletteIdx % PALETTE.length].bg;

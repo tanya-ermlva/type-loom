@@ -3,7 +3,6 @@ import type {
   FalloffKind,
   Field,
   GlobalParams,
-  Letter,
   Row,
 } from './types';
 
