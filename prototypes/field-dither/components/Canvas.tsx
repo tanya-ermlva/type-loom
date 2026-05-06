@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CANVAS_H, CANVAS_W, useStore } from '../store';
-import { buildCells } from '../dither';
+import { buildCells, rasterizeToGrid } from '../dither';
 
 type DragState =
   | { kind: 'move'; id: string; offsetX: number; offsetY: number }
@@ -15,10 +15,27 @@ export function Canvas() {
   const selectedFieldId = useStore((s) => s.selectedFieldId);
   const selectField = useStore((s) => s.selectField);
   const updateField = useStore((s) => s.updateField);
+  const imageDataUrl = useStore((s) => s.imageDataUrl);
+
+  // Re-rasterize the uploaded image whenever the source URL, grid size, or
+  // invert flag changes. Cancellation guard prevents a stale resolved
+  // promise from clobbering a fresh grid if the user fires uploads quickly.
+  const [imageGrid, setImageGrid] = useState<number[][] | null>(null);
+  useEffect(() => {
+    if (!imageDataUrl) {
+      setImageGrid(null);
+      return;
+    }
+    let cancelled = false;
+    rasterizeToGrid(imageDataUrl, globals.charCount, globals.rowCount, globals.invertImage)
+      .then((g) => { if (!cancelled) setImageGrid(g); })
+      .catch(() => { if (!cancelled) setImageGrid(null); });
+    return () => { cancelled = true; };
+  }, [imageDataUrl, globals.charCount, globals.rowCount, globals.invertImage]);
 
   const cells = useMemo(
-    () => buildCells(fields, globals, CANVAS_W, CANVAS_H),
-    [fields, globals],
+    () => buildCells(fields, globals, CANVAS_W, CANVAS_H, imageGrid),
+    [fields, globals, imageGrid],
   );
 
   const svgRef = useRef<SVGSVGElement>(null);

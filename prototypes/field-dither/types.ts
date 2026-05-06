@@ -53,6 +53,9 @@ export interface GlobalParams {
   backgroundColor: string;
   /** Hex letter color. Letters always render in this color. */
   letterColor: string;
+  /** When an uploaded image is in use, flip dark↔light. By default dark
+   *  pixels in the image become letters; with this on, light pixels do. */
+  invertImage: boolean;
 }
 
 export interface Cell {

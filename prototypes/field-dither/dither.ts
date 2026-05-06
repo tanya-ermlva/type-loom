@@ -55,24 +55,73 @@ function intensityFromField(x: number, y: number, f: Field, kind: FalloffKind): 
   return f.strength * falloff(d, kind);
 }
 
+/** Rasterize an SVG/PNG/JPG data URL into an intensity grid of the given
+ *  dimensions. By default dark pixels become high intensity (= letters).
+ *  Setting `invert` flips the convention. Returns a promise because Image
+ *  loading is async.
+ *
+ *  Aspect handling: image is stretched to fill (cols × rows). For different
+ *  aspects the user should pre-crop or use a roughly square source. */
+export async function rasterizeToGrid(
+  dataUrl: string,
+  cols: number,
+  rows: number,
+  invert: boolean,
+): Promise<number[][]> {
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  await new Promise<void>((resolve, reject) => {
+    img.onload = () => resolve();
+    img.onerror = () => reject(new Error('Image load failed'));
+    img.src = dataUrl;
+  });
+  const canvas = document.createElement('canvas');
+  canvas.width = cols;
+  canvas.height = rows;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('No 2D context');
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(img, 0, 0, cols, rows);
+  const data = ctx.getImageData(0, 0, cols, rows).data;
+  const grid: number[][] = new Array(rows);
+  for (let r = 0; r < rows; r++) {
+    grid[r] = new Array(cols);
+    for (let c = 0; c < cols; c++) {
+      const i = (r * cols + c) * 4;
+      const a = data[i + 3] / 255;
+      // Luminance in [0, 1]; treat fully-transparent areas as background.
+      const lum = a === 0 ? 1 : (data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114) / 255;
+      const v = invert ? lum : 1 - lum;
+      grid[r][c] = v;
+    }
+  }
+  return grid;
+}
+
 /** Build the (rowCount × charCount) intensity grid. Each cell value is
- *  in [0, 1] after summing all fields against the base density and
- *  clamping. */
+ *  in [0, 1] after summing all fields against the base density (or image)
+ *  and clamping. */
 export function buildIntensityGrid(
   fields: Field[],
   params: GlobalParams,
   canvasW: number,
   canvasH: number,
+  imageGrid: number[][] | null = null,
 ): { grid: number[][]; positions: { x: number; y: number }[][] } {
   const { rowCount, charCount, columnSpacing, rowSpacing, letterSize } = params;
   const grid: number[][] = new Array(rowCount);
   const positions: { x: number; y: number }[][] = new Array(rowCount);
 
-  // Centered grid layout.
   const totalW = (charCount - 1) * columnSpacing;
   const totalH = (rowCount - 1) * rowSpacing;
   const x0 = (canvasW - totalW) / 2;
   const y0 = (canvasH - totalH) / 2;
+
+  // The image grid (when present) replaces the flat baseDensity with a
+  // 2D map. Field falloffs are then summed on top, so the user can still
+  // bump density up locally with a + field or carve a void with a - field
+  // even when an image is the primary source.
+  const useImage = imageGrid && imageGrid.length === rowCount && imageGrid[0]?.length === charCount;
 
   for (let r = 0; r < rowCount; r++) {
     grid[r] = new Array(charCount);
@@ -80,12 +129,12 @@ export function buildIntensityGrid(
     for (let c = 0; c < charCount; c++) {
       const x = x0 + c * columnSpacing;
       const y = y0 + r * rowSpacing;
-      let v = params.baseDensity;
+      let v = useImage ? imageGrid![r][c] : params.baseDensity;
       for (const f of fields) v += intensityFromField(x, y, f, params.falloff);
       grid[r][c] = Math.max(0, Math.min(1, v));
       positions[r][c] = { x, y };
     }
-    void letterSize; // reserved for future per-cell sizing
+    void letterSize;
   }
 
   return { grid, positions };
@@ -237,8 +286,9 @@ export function buildCells(
   params: GlobalParams,
   canvasW: number,
   canvasH: number,
+  imageGrid: number[][] | null = null,
 ): Cell[] {
-  const { grid, positions } = buildIntensityGrid(fields, params, canvasW, canvasH);
+  const { grid, positions } = buildIntensityGrid(fields, params, canvasW, canvasH, imageGrid);
   const dithered = applyDither(grid, params.ditherAlgo, params.threshold);
   const letters = lettersOnly(params.word);
   const cells: Cell[] = [];

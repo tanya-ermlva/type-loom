@@ -29,12 +29,16 @@ const initialGlobals: GlobalParams = {
   falloff: 'smoothstep',
   backgroundColor: '#0a0a0a',
   letterColor: '#ff7a00', // Operators-ish orange
+  invertImage: false,
 };
 
 type State = {
   fields: Field[];
   globals: GlobalParams;
   selectedFieldId: string | null;
+  /** Uploaded image as a data URL — used as a per-cell base intensity map.
+   *  Not persisted (could be large; user re-uploads after refresh). */
+  imageDataUrl: string | null;
 };
 
 type Actions = {
@@ -43,6 +47,7 @@ type Actions = {
   updateField: (id: string, patch: Partial<Field>) => void;
   selectField: (id: string | null) => void;
   updateGlobals: (patch: Partial<GlobalParams>) => void;
+  setImage: (dataUrl: string | null) => void;
   reset: () => void;
 };
 
@@ -65,6 +70,9 @@ export const useStore = create<State & Actions>()(
       fields: [initialField],
       globals: initialGlobals,
       selectedFieldId: 'f1',
+      imageDataUrl: null,
+
+      setImage: (dataUrl) => set({ imageDataUrl: dataUrl }),
 
       addField: () =>
         set((s) => {
@@ -109,11 +117,20 @@ export const useStore = create<State & Actions>()(
           fields: [initialField],
           globals: initialGlobals,
           selectedFieldId: 'f1',
+          imageDataUrl: null,
         }),
     }),
     {
       name: 'field-dither-store-v1',
       version: 1,
+      // Don't persist the uploaded image — could be a large data URL and
+      // we'd rather not blow out localStorage quota. User re-uploads after
+      // refresh (low cost since fields/grid are remembered).
+      partialize: (state) => ({
+        fields: state.fields,
+        globals: state.globals,
+        selectedFieldId: state.selectedFieldId,
+      }),
       merge: (persisted, current) => {
         const p = persisted as Partial<State> | undefined;
         if (!p) return current;

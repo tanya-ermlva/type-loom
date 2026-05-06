@@ -19,10 +19,72 @@ export function Panel() {
   return (
     <aside className="w-[320px] shrink-0 border-l border-zinc-800 bg-zinc-900 overflow-y-auto text-zinc-200 text-xs">
       <ColorsSection />
+      <SourceSection />
       <DitherSection />
       <GridSection />
       <FieldsSection />
     </aside>
+  );
+}
+
+function SourceSection() {
+  const imageDataUrl = useStore((s) => s.imageDataUrl);
+  const invertImage = useStore((s) => s.globals.invertImage);
+  const setImage = useStore((s) => s.setImage);
+  const updateGlobals = useStore((s) => s.updateGlobals);
+
+  function onUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setImage(reader.result as string);
+    reader.readAsDataURL(file);
+    // Reset input so re-uploading the same file fires onChange again.
+    e.target.value = '';
+  }
+
+  return (
+    <Section title="Source image">
+      <label className="block mb-2">
+        <input
+          type="file"
+          accept=".svg,.png,.jpg,.jpeg,image/*"
+          onChange={onUpload}
+          className="hidden"
+        />
+        <span className="block px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 rounded text-zinc-200 cursor-pointer text-center text-[12px]">
+          {imageDataUrl ? 'Replace image' : 'Upload SVG / image'}
+        </span>
+      </label>
+
+      {imageDataUrl && (
+        <>
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-12 h-12 rounded border border-zinc-800 bg-zinc-950 overflow-hidden flex items-center justify-center">
+              <img src={imageDataUrl} alt="source" className="max-w-full max-h-full object-contain" />
+            </div>
+            <button
+              onClick={() => setImage(null)}
+              className="text-[10px] text-zinc-500 hover:text-red-400"
+            >Remove</button>
+          </div>
+          <label className="flex items-center gap-2 mb-1">
+            <input
+              type="checkbox"
+              checked={invertImage}
+              onChange={(e) => updateGlobals({ invertImage: e.target.checked })}
+              className="cursor-pointer"
+            />
+            <span className="text-[11px] text-zinc-300">Invert (white = letters)</span>
+          </label>
+        </>
+      )}
+
+      <p className="text-[10px] text-zinc-500 leading-tight mt-1.5">
+        Image becomes the per-cell base intensity (dark = letters by default).
+        Fields still add density (+) or carve voids (−) on top.
+      </p>
+    </Section>
   );
 }
 
