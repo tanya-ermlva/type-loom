@@ -6,6 +6,7 @@ import type {
   RowFlowParams,
   CircleFlowParams,
 } from './flow';
+import type { ProjectSnapshot } from './persistence';
 
 /**
  * Default composition: three RowFlows stacked vertically (D / F / D) forming
@@ -92,9 +93,12 @@ interface Store {
   addFlow: (kind: FlowKind) => void;
   removeFlow: (id: string) => void;
   resetComposition: () => void;
+  // Project snapshots (named save/load with thumbnails).
+  toSnapshot: () => ProjectSnapshot;
+  loadSnapshot: (s: ProjectSnapshot) => void;
 }
 
-export const useStore = create<Store>((set) => ({
+export const useStore = create<Store>((set, get) => ({
   composition: DEFAULT_COMPOSITION,
   playing: true,
   selectedFlowId: DEFAULT_COMPOSITION.flows[0].id,
@@ -177,5 +181,22 @@ export const useStore = create<Store>((set) => ({
     set({
       composition: DEFAULT_COMPOSITION,
       selectedFlowId: DEFAULT_COMPOSITION.flows[0].id,
+    }),
+
+  toSnapshot: () => {
+    const s = get();
+    return {
+      schemaVersion: 1,
+      composition: s.composition,
+      selectedFlowId: s.selectedFlowId,
+    };
+  },
+
+  loadSnapshot: (snap) =>
+    set({
+      composition: snap.composition,
+      selectedFlowId: snap.selectedFlowId,
+      // Always start paused so loading a project doesn't surprise with motion.
+      playing: false,
     }),
 }));
