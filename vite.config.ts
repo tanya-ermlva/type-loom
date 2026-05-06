@@ -20,6 +20,10 @@ export default defineConfig({
         gooeyPoster: resolve(__dirname, 'prototypes/gooey-poster/index.html'),
         // Compress: ellipse force fields squeeze/push letters in a grid
         compress: resolve(__dirname, 'prototypes/compress/index.html'),
+        // Field-dither: same fields decide letter PRESENCE via Floyd–Steinberg
+        fieldDither: resolve(__dirname, 'prototypes/field-dither/index.html'),
+        // Prototypes hub: static landing page linking to every experiment
+        prototypesIndex: resolve(__dirname, 'prototypes/index.html'),
       },
     },
   },

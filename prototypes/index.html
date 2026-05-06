@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Type Loom · prototypes</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0a0a0a;
+        --surface: #18181b;
+        --border: #27272a;
+        --text: #e4e4e7;
+        --muted: #a1a1aa;
+        --accent: #60a5fa;
+      }
+      *, *::before, *::after { box-sizing: border-box; }
+      html, body {
+        margin: 0; padding: 0;
+        background: var(--bg); color: var(--text);
+        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+        font-size: 14px; line-height: 1.5;
+      }
+      header {
+        border-bottom: 1px solid var(--border);
+        padding: 22px 32px 18px;
+      }
+      h1 {
+        margin: 0 0 6px;
+        font-size: 18px; font-weight: 600; letter-spacing: -0.01em;
+      }
+      .subtitle {
+        color: var(--muted); font-size: 12px;
+      }
+      .links {
+        margin-top: 14px;
+        display: flex; gap: 16px; font-size: 12px;
+      }
+      .links a {
+        color: var(--muted); text-decoration: none;
+      }
+      .links a:hover { color: var(--text); }
+      main {
+        padding: 32px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 16px;
+        max-width: 1400px;
+      }
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 20px;
+        text-decoration: none;
+        color: inherit;
+        display: flex; flex-direction: column; gap: 8px;
+        transition: border-color 120ms, transform 120ms;
+      }
+      .card:hover {
+        border-color: var(--accent);
+        transform: translateY(-1px);
+      }
+      .card .name {
+        font-size: 15px; font-weight: 600; letter-spacing: -0.01em;
+      }
+      .card .tagline {
+        font-size: 12px; color: var(--muted); min-height: 32px;
+      }
+      .card .meta {
+        margin-top: 6px;
+        display: flex; gap: 10px;
+        font-size: 11px; color: var(--muted);
+        text-transform: uppercase; letter-spacing: 0.06em;
+      }
+      .card .meta .tag {
+        background: rgba(255,255,255,0.04);
+        padding: 2px 6px;
+        border-radius: 3px;
+      }
+      .card .arrow {
+        margin-top: auto; padding-top: 10px;
+        font-size: 13px; color: var(--accent);
+      }
+      footer {
+        padding: 24px 32px 40px;
+        color: var(--muted); font-size: 11px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Type Loom — prototypes</h1>
+      <div class="subtitle">Sandbox for kinetic typography experiments. Each is its own self-contained app.</div>
+      <div class="links">
+        <a href="../">← Main app</a>
+        <a href="https://github.com/tanya-ermlva/type-loom" target="_blank" rel="noopener">GitHub</a>
+      </div>
+    </header>
+
+    <main>
+      <div class="grid">
+        <a class="card" href="./compress/index.html">
+          <div class="name">Compress</div>
+          <div class="tagline">Ellipse force fields squeeze and push letters in a grid. Cascade clamping with smart drop, per-word color blobs, animation export.</div>
+          <div class="meta">
+            <span class="tag">Force fields</span>
+            <span class="tag">Cascade</span>
+            <span class="tag">Word blobs</span>
+          </div>
+          <div class="arrow">Open →</div>
+        </a>
+
+        <a class="card" href="./field-dither/index.html">
+          <div class="name">Field Dither</div>
+          <div class="tagline">Force fields decide letter <em>presence</em>, not position. Floyd–Steinberg / Atkinson / Sierra / Bayer threshold each cell. Halftone typography.</div>
+          <div class="meta">
+            <span class="tag">Dithering</span>
+            <span class="tag">Error diffusion</span>
+            <span class="tag">Halftone</span>
+          </div>
+          <div class="arrow">Open →</div>
+        </a>
+
+        <a class="card" href="./gooey-poster/index.html">
+          <div class="name">Gooey Poster</div>
+          <div class="tagline">Cursor-driven goo filter — cursor is a blob mask that reveals a wobbled, blurred-and-thresholded version of the type.</div>
+          <div class="meta">
+            <span class="tag">SVG filter</span>
+            <span class="tag">Cursor mask</span>
+            <span class="tag">Goo</span>
+          </div>
+          <div class="arrow">Open →</div>
+        </a>
+
+        <a class="card" href="./word-flow/index.html">
+          <div class="name">Word Flow</div>
+          <div class="tagline">Typographic compositions where words flow with adjustable density, envelope curves, and edge stillness. Predecessor of Compress.</div>
+          <div class="meta">
+            <span class="tag">Density</span>
+            <span class="tag">Envelopes</span>
+            <span class="tag">Flow</span>
+          </div>
+          <div class="arrow">Open →</div>
+        </a>
+      </div>
+    </main>
+
+    <footer>
+      Built on a long weekend of obsessing over force fields, halftones, and what type can do when it stops sitting still.
+    </footer>
+  </body>
+</html>
