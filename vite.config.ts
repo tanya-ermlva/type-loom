@@ -22,6 +22,8 @@ export default defineConfig({
         compress: resolve(__dirname, 'prototypes/compress/index.html'),
         // Field-dither: same fields decide letter PRESENCE via Floyd–Steinberg
         fieldDither: resolve(__dirname, 'prototypes/field-dither/index.html'),
+        // Pulse: 2-line text pulsing between layout states with per-line bg
+        pulse: resolve(__dirname, 'prototypes/pulse/index.html'),
         // Prototypes hub: static landing page linking to every experiment
         prototypesIndex: resolve(__dirname, 'prototypes/index.html'),
       },
