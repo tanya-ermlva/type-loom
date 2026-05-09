@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist, type StorageValue } from 'zustand/middleware';
+import { tokenize } from './tokens';
 
 // ---------- Types ----------
 
@@ -140,14 +141,9 @@ export const useStore = create<Store>()(
       setLineText: (lineIdx, text) =>
         set((s) => {
           const next = { ...s.composition, lines: s.composition.lines.slice() };
-          // Auto-tokenize is implemented in tokens.ts; called here.
-          // For now, dump raw split (improved in Task 5).
           next.lines[lineIdx] = {
             ...next.lines[lineIdx],
-            tokens: text.trim().split(/\s+/).map((t, i) => ({
-              id: `${next.lines[lineIdx].id}-${i}`,
-              text: t,
-            })),
+            tokens: tokenize(text, next.lines[lineIdx].id),
           };
           return { composition: next };
         }),
