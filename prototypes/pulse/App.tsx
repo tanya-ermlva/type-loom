@@ -1,7 +1,10 @@
+import { useStore } from './store';
+
 export default function App() {
+  const composition = useStore((s) => s.composition);
   return (
-    <div style={{ padding: 32, fontFamily: '"NHaas Grotesk Display Pro", sans-serif', fontSize: 48 }}>
-      Pulse — scaffold smoke test
+    <div style={{ padding: 32, fontFamily: composition.fontFamily, fontSize: 24 }}>
+      Lines: {composition.lines.length}, fontSize: {composition.fontSize}
     </div>
   );
 }
