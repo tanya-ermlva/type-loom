@@ -147,8 +147,13 @@ export default function App() {
             <PrototypeNav current="stack" />
           </div>
 
+          {/* Canvas sizing: fit inside (90vw × 85vh) while preserving aspect-ratio.
+              Compute width as the SMALLER of (90vw) and (85vh × aspect) so that
+              when height would overflow we shrink width too. Height auto-derives
+              from aspect-ratio. Works for any preset — wide hits 90vw, tall hits
+              the 85vh-derived width and ends up properly portrait-shaped. */}
           <div id="stack-canvas" data-canvas-bg={baseComposition.bgColor} style={{
-            width: 'min(100%, 90vw)', maxHeight: '85vh',
+            width: `min(90vw, calc(85vh * ${canvas.width} / ${canvas.height}))`,
             aspectRatio: `${canvas.width} / ${canvas.height}`,
             position: 'relative', overflow: 'hidden',
             background: baseComposition.bgColor,

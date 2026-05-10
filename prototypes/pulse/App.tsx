@@ -29,9 +29,11 @@ export default function App() {
             <PrototypeNav current="atom" />
           </div>
 
-          {/* The atom itself, scaled to fit the canvas area. RAF lives inside Atom. */}
+          {/* The atom itself, scaled to fit the canvas area. RAF lives inside Atom.
+              Width = min(90vw, 85vh × aspect) so portrait aspects shrink width
+              to keep height ≤ 85vh while preserving aspect-ratio. */}
           <div style={{
-            width: 'min(100%, 90vw)', maxHeight: '85vh',
+            width: `min(90vw, calc(85vh * ${composition.canvasWidth} / ${composition.canvasHeight}))`,
             aspectRatio: `${composition.canvasWidth} / ${composition.canvasHeight}`,
           }}>
             <Atom composition={composition} playing={playing} debug
