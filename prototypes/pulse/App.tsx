@@ -3,6 +3,7 @@ import { useStore } from './store';
 import { layoutLine, type TokenPosition, type TokenWidth } from './layout';
 import { useTokenWidths } from './tokens';
 import { easings, jitterFor, lerp, tokenProgress } from './animation';
+import { Sidebar } from './Sidebar';
 
 export default function App() {
   const composition = useStore((s) => s.composition);
@@ -110,7 +111,11 @@ export default function App() {
         <a href="../" style={{ color: '#71717a', textDecoration: 'none', fontSize: 11 }}>← all prototypes</a>
       </header>
 
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, position: 'relative' }}>
+      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+        <div style={{
+          flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: 24, position: 'relative', overflow: 'hidden',
+        }}>
         <svg
           viewBox={`0 0 ${canvasWidth} ${canvasHeight}`}
           style={{ width: 'min(100%, 90vw)', maxHeight: '85vh', background: bgColor, display: 'block' }}
@@ -165,6 +170,8 @@ export default function App() {
             {showStateLabel && (t < 0.05 ? 'A' : t > 0.95 ? 'B' : '↔')}
           </div>
         )}
+        </div>
+        <Sidebar />
       </div>
     </div>
   );
