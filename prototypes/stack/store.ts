@@ -85,6 +85,12 @@ export interface StackState {
   stackCanvasWidth: number;
   stackCanvasHeight: number;
   /**
+   * Stack canvas background colour. Independent of Pulse's bgColor — change here
+   * doesn't affect Pulse and vice versa. Default matches Pulse's default so first
+   * load looks identical to before.
+   */
+  bgColor: string;
+  /**
    * Total scroll cycle in seconds — primary timing knob. Defines how often the
    * canvas snaps up by one atomHeight, which is the visible rhythm of the stack.
    */
@@ -131,6 +137,7 @@ export const DEFAULT_STACK_STATE: StackState = {
   canvasPreset: 'wide',
   stackCanvasWidth: CANVAS_PRESETS.wide.width,
   stackCanvasHeight: CANVAS_PRESETS.wide.height,
+  bgColor: '#B0AA6D',  // matches Pulse default for visual continuity
   cycleDuration: 3.0,            // 3-second scroll cycle
   pulsesPerScroll: 1,            // 1 atom pulse per scroll step (atom = 3s in Stack)
   scrollEasing: 'easeOutQuart',
@@ -148,6 +155,7 @@ interface Store extends StackState {
   setCanvasPreset: (p: CanvasPreset) => void;
   /** Set custom W/H. Implicitly switches preset to 'custom'. */
   setCustomCanvas: (w: number, h: number) => void;
+  setBgColor: (c: string) => void;
   setCycleDuration: (v: number) => void;
   setPulsesPerScroll: (v: number) => void;
   setScrollEasing: (v: EasingMode) => void;
@@ -186,6 +194,7 @@ export const useStore = create<Store>()(
         stackCanvasWidth: Math.max(200, Math.min(8000, Math.round(w))),
         stackCanvasHeight: Math.max(200, Math.min(8000, Math.round(h))),
       }),
+      setBgColor: (bgColor) => set({ bgColor }),
       setCycleDuration: (cycleDuration) => set({ cycleDuration: Math.max(0.3, Math.min(15, cycleDuration)) }),
       setPulsesPerScroll: (pulsesPerScroll) =>
         set({ pulsesPerScroll: Math.max(1, Math.min(8, Math.round(pulsesPerScroll))) }),
@@ -231,6 +240,7 @@ export const useStore = create<Store>()(
           canvasPreset: s.canvasPreset,
           stackCanvasWidth: s.stackCanvasWidth,
           stackCanvasHeight: s.stackCanvasHeight,
+          bgColor: s.bgColor,
           cycleDuration: s.cycleDuration,
           pulsesPerScroll: s.pulsesPerScroll,
           scrollEasing: s.scrollEasing,

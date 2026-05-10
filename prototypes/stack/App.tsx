@@ -21,7 +21,7 @@ import { ExportContext } from '../pulse/ExportContext';
 export default function App() {
   const baseComposition = usePulseStore((s) => s.composition);
   const {
-    stackCanvasWidth, stackCanvasHeight,
+    stackCanvasWidth, stackCanvasHeight, bgColor,
     cycleDuration, pulsesPerScroll, scrollEasing, scrollEasingCurve, playing, scrollEnabled,
     atomPalette, atomAlignmentOverrides, phaseMode, phaseStep, phaseSpread,
   } = useStackStore();
@@ -151,12 +151,13 @@ export default function App() {
               Compute width as the SMALLER of (90vw) and (85vh × aspect) so that
               when height would overflow we shrink width too. Height auto-derives
               from aspect-ratio. Works for any preset — wide hits 90vw, tall hits
-              the 85vh-derived width and ends up properly portrait-shaped. */}
-          <div id="stack-canvas" data-canvas-bg={baseComposition.bgColor} style={{
+              the 85vh-derived width and ends up properly portrait-shaped.
+              bgColor is Stack's own (independent of Pulse). */}
+          <div id="stack-canvas" data-canvas-bg={bgColor} style={{
             width: `min(90vw, calc(85vh * ${canvas.width} / ${canvas.height}))`,
             aspectRatio: `${canvas.width} / ${canvas.height}`,
             position: 'relative', overflow: 'hidden',
-            background: baseComposition.bgColor,
+            background: bgColor,
           }}>
             {atoms.length > 0 && Array.from({ length: slotCount }, (_, slotIdx) => {
               const atomIdx = (((cycleIdx + slotIdx) % atoms.length) + atoms.length) % atoms.length;
@@ -200,7 +201,7 @@ export default function App() {
           finishExport: () => {
             setExportFrame(null);
           },
-          getSvg: () => buildStackComposite(canvas.width, canvas.height, baseComposition.bgColor),
+          getSvg: () => buildStackComposite(canvas.width, canvas.height, bgColor),
         }}>
           <Sidebar />
         </ExportContext.Provider>

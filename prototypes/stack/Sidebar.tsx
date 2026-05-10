@@ -110,6 +110,8 @@ function CanvasSection() {
   const stackCanvasWidth = useStore((s) => s.stackCanvasWidth);
   const stackCanvasHeight = useStore((s) => s.stackCanvasHeight);
   const setCustomCanvas = useStore((s) => s.setCustomCanvas);
+  const bgColor = useStore((s) => s.bgColor);
+  const setBgColor = useStore((s) => s.setBgColor);
   const { count, atomDisplayHeight } = useDerivedAtomCount();
 
   return (
@@ -139,6 +141,14 @@ function CanvasSection() {
       <p style={{ fontSize: 10, color: '#71717a', lineHeight: 1.4, margin: '6px 0 0' }}>
         Atom width = canvas width (always fills). Atom height = canvas width × atom aspect from{' '}
         <a href="../pulse/" style={{ color: '#60a5fa' }}>Atom</a>. Count = floor(canvas H ÷ atom H).
+      </p>
+      <div style={{ marginTop: 12, marginBottom: 4, fontSize: 10, color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.12em' }}>
+        Background
+      </div>
+      <ColorChip label="bg" value={bgColor} onChange={setBgColor} />
+      <p style={{ fontSize: 10, color: '#71717a', lineHeight: 1.4, margin: '6px 0 0' }}>
+        Stack's own canvas background — independent of the bg in{' '}
+        <a href="../pulse/" style={{ color: '#60a5fa' }}>Atom</a>.
       </p>
     </Section>
   );
