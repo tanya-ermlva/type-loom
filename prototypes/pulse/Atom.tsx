@@ -74,7 +74,7 @@ export function Atom({
     loopDuration, direction, phaseOffset,
     perTokenStagger, perLineOffset, bgLag,
     jitterX, jitterY, jitterSeed,
-    trailsEnabled, trailColors, trailLagStep,
+    trailsEnabled, trailCount, trailLagStep,
     showTokenBounds, showLineBounds, showCanvasGrid,
   } = composition;
 
@@ -211,17 +211,17 @@ export function Atom({
       // additional extraLag on top.
       const tokens = interp('tokens');
       const bgPositions = interp('bg').map(({ id, x, width }) => ({ id, x, width }));
-      // Compute trail bg positions (one per trail color), each at increasing
-      // extra lag in PHASE space — direction-aware in both halves of ping-pong.
-      const trailBgPositions: { id: string; x: number; width: number }[][] = trailsEnabled
-        ? trailColors.map((_, ti) =>
-            interp('bg', trailLagStep * (ti + 1)).map(({ id, x, width }) => ({ id, x, width })))
-        : [];
+      // Compute trail bg positions (one per trail), each at increasing extra
+      // lag in PHASE space — direction-aware in both halves of ping-pong.
+      const safeCount = trailsEnabled ? Math.max(0, Math.floor(trailCount)) : 0;
+      const trailBgPositions: { id: string; x: number; width: number }[][] =
+        Array.from({ length: safeCount }, (_, ti) =>
+          interp('bg', trailLagStep * (ti + 1)).map(({ id, x, width }) => ({ id, x, width })));
       return { positions: tokens, bgPositions, trailBgPositions };
     });
   }, [layoutsABC, phase, toProgress, easing, easingCurve, perTokenStagger,
       perLineOffset, bgLag, jitterX, jitterY, jitterSeed, useStateC,
-      trailsEnabled, trailColors, trailLagStep]);
+      trailsEnabled, trailCount, trailLagStep]);
 
   const debugOn = debug && (showTokenBounds || showLineBounds || showCanvasGrid);
 
@@ -241,20 +241,29 @@ export function Atom({
         const fillMode = bgBoundsModes?.[li] ?? 'continuous';
         return (
           <g key={lines[li].id}>
-            {/* Trails: ALWAYS per-token, regardless of fillMode. Each trail = the
-                token's bg-rect sampled at an earlier point on the same curve, so
-                a token moving left leaves trails on its right (where it came from)
-                and vice versa. For lines where the line-bg as a whole only grows
-                without translating, per-token trails still reveal direction per token. */}
-            {trailsEnabled && row.trailBgPositions && [...row.trailBgPositions].reverse().map((trailPos, revIdx) => {
-              const ti = row.trailBgPositions!.length - 1 - revIdx;
-              const color = trailColors[ti];
-              if (!color || !trailPos.length) return null;
-              return trailPos.map((p) => (
-                <rect key={`trail-${li}-${ti}-${p.id}`}
-                  x={p.x} y={bgY} width={p.width} height={lineHeight} fill={color} />
-              ));
-            })}
+            {/* Trails: ALWAYS per-token, regardless of fillMode. Each trail =
+                the token's bg-rect at an earlier point on the curve, sampled in
+                phase space (direction-aware in both halves of ping-pong). All
+                trails use blockColor; opacity fades linearly from 0.9 (closest)
+                to 0.0 (deepest) across `trailCount`. Where a trail overlaps the
+                main bg there's no visible change (same colour over same colour);
+                where it extends beyond, you see a faded ghost of the bg shape.
+                Render order: deepest first → closest last (so closer trails
+                stack on top and appear more opaque). */}
+            {trailsEnabled && row.trailBgPositions && row.trailBgPositions.length > 0
+              && [...row.trailBgPositions].reverse().map((trailPos, revIdx) => {
+                const total = row.trailBgPositions!.length;
+                const ti = total - 1 - revIdx;
+                if (!trailPos.length) return null;
+                // Linear lerp(0.9, 0, ti/(total-1)). For total=1, single trail at 0.9.
+                const opacity = total > 1 ? 0.9 * (1 - ti / (total - 1)) : 0.9;
+                if (opacity <= 0) return null; // skip the literally-invisible trail
+                return trailPos.map((p) => (
+                  <rect key={`trail-${li}-${ti}-${p.id}`}
+                    x={p.x} y={bgY} width={p.width} height={lineHeight}
+                    fill={blockColor} opacity={opacity} />
+                ));
+              })}
             {fillMode === 'continuous' ? (
               <rect x={bgX} y={bgY} width={bgRight - bgX} height={lineHeight} fill={blockColor} />
             ) : (

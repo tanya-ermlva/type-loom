@@ -102,10 +102,11 @@ export interface Composition {
   jitterX: number;
   jitterY: number;
   jitterSeed: number;
-  // Color trails — staggered echoes behind the main bg rect.
+  // Color trails — staggered echoes of the bg rect, fading from blockColor
+  // (90% opacity at the closest trail) to blockColor (0% opacity at the deepest).
   trailsEnabled: boolean;
-  /** Palette used for trails — index 0 is the closest trail to the main rect. */
-  trailColors: string[];
+  /** Number of trail echoes (1..8). Each is blockColor with linearly decreasing opacity. */
+  trailCount: number;
   /** Lag (fraction of cycle) added per trail relative to the main rect. */
   trailLagStep: number;
   // Character-level animation (per-letter effects, layered on top of token motion).
@@ -166,7 +167,7 @@ export const DEFAULT_COMPOSITION: Composition = {
   jitterY: 0,
   jitterSeed: 1,
   trailsEnabled: false,
-  trailColors: ['#7DFFB8', '#E453AA', '#0D7EFF', '#F9576E'], // mint, pink, blue, coral
+  trailCount: 4,
   trailLagStep: 0.05,
   characterStaggerEnabled: false,
   characterStagger: 0.3,
@@ -192,7 +193,7 @@ interface Store {
 }
 
 const STORAGE_KEY = 'pulse:state';
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 
 export const useStore = create<Store>()(
   persist(
@@ -225,21 +226,34 @@ export const useStore = create<Store>()(
       // When the schema gains new fields, backfill them from defaults so older
       // localStorage states don't crash with `undefined` reads.
       migrate: (persisted, version) => {
+        let p = persisted as { composition?: Record<string, unknown> } | null;
         if (version < 3) {
           // Old shapes may carry `bgBoundsMode` (singular string, removed in v3)
           // or no fill mode at all. Strip both forms; let DEFAULT_COMPOSITION
           // provide the fresh `bgBoundsModes` array via the merge step below.
-          const p = (persisted as { composition?: Record<string, unknown> } | null) ?? {};
-          const old = p.composition ?? {};
+          const old = p?.composition ?? {};
           const { bgBoundsMode: _drop, bgBoundsModes: _drop2, ...preserved } = old;
-          return {
+          p = {
             composition: {
               ...DEFAULT_COMPOSITION,
               ...(preserved as Partial<Composition>),
             },
-          } as StorageValue<Store>['state'];
+          };
         }
-        return persisted as StorageValue<Store>['state'];
+        if (version < 4) {
+          // v4: trail palette (`trailColors: string[]`) replaced by `trailCount`.
+          // Each trail is now blockColor with auto-computed fading opacity.
+          // Strip the dead palette so it doesn't ride along as an unknown field.
+          const old = p?.composition ?? {};
+          const { trailColors: _drop, ...preserved } = old;
+          p = {
+            composition: {
+              ...DEFAULT_COMPOSITION,
+              ...(preserved as Partial<Composition>),
+            },
+          };
+        }
+        return p as unknown as StorageValue<Store>['state'];
       },
       // Default merge in zustand is shallow — `{ ...current, ...persisted }` —
       // which means a persisted composition without a new field overwrites the
