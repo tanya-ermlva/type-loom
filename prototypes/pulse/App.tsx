@@ -143,9 +143,31 @@ export default function App() {
                     </text>
                   );
                 })}
+                {composition.showLineBounds && (
+                  <rect x={bgX} y={bgY} width={bgRight - bgX} height={lineHeight}
+                    fill="none" stroke="#ff00ff" strokeWidth={1.5} pointerEvents="none" />
+                )}
+                {composition.showTokenBounds && lines[li].tokens.map((tok, ti) => {
+                  const p = row.positions[ti];
+                  return (
+                    <rect key={`tb-${tok.id}`}
+                      x={p.x} y={bgY} width={p.width} height={lineHeight}
+                      fill="none" stroke="#00ffff" strokeWidth={1} pointerEvents="none" />
+                  );
+                })}
               </g>
             );
           })}
+          {composition.showCanvasGrid && (
+            <g pointerEvents="none" stroke="#000" strokeOpacity={0.08} strokeWidth={1}>
+              {Array.from({ length: Math.ceil(canvasWidth / 100) }, (_, i) => (
+                <line key={`vx-${i}`} x1={i * 100} y1={0} x2={i * 100} y2={canvasHeight} />
+              ))}
+              {Array.from({ length: Math.ceil(canvasHeight / 50) }, (_, i) => (
+                <line key={`vy-${i}`} x1={0} y1={i * 50} x2={canvasWidth} y2={i * 50} />
+              ))}
+            </g>
+          )}
         </svg>
 
         {/* Bottom-left play/pause */}

@@ -21,6 +21,10 @@ export function Sidebar() {
       <TypographySection />
       <LayoutSection />
       <AnimationCharacterSection />
+      <RandomSection />
+      <ColorsSection />
+      <TextSection />
+      <DebugSection />
     </aside>
   );
 }
@@ -140,6 +144,117 @@ function AnimationCharacterSection() {
         onChange={(v) => update({ perLineOffset: v })} format={(v) => v.toFixed(2)} />
       <Slider label="Bg lag" value={c.bgLag} min={0} max={0.3} step={0.01}
         onChange={(v) => update({ bgLag: v })} format={(v) => v.toFixed(2)} />
+    </Section>
+  );
+}
+
+function RandomSection() {
+  const c = useStore((s) => s.composition);
+  const update = useStore((s) => s.updateComposition);
+  const reseed = useStore((s) => s.reseedJitter);
+
+  return (
+    <Section title="Random">
+      <Slider label="X jitter" value={c.jitterX} min={0} max={30} step={0.5}
+        onChange={(v) => update({ jitterX: v })} />
+      <Slider label="Y jitter" value={c.jitterY} min={0} max={20} step={0.5}
+        onChange={(v) => update({ jitterY: v })} />
+      <button onClick={reseed}
+        style={{
+          width: '100%', padding: '6px', marginTop: 4,
+          background: '#27272a', color: '#e4e4e7', border: 0, borderRadius: 4, cursor: 'pointer',
+        }}>Re-seed (#{c.jitterSeed})</button>
+    </Section>
+  );
+}
+
+function ColorsSection() {
+  const c = useStore((s) => s.composition);
+  const update = useStore((s) => s.updateComposition);
+
+  const ColorRow = ({
+    label, value, onChange,
+  }: { label: string; value: string; onChange: (v: string) => void }) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+      <label style={{ width: 64, fontSize: 11, color: '#a1a1aa' }}>{label}</label>
+      <input type="color" value={value}
+        onChange={(e) => onChange(e.target.value)}
+        style={{ width: 32, height: 22, padding: 0, border: '1px solid #3f3f46', background: 'transparent', cursor: 'pointer' }} />
+      <input type="text" value={value}
+        onChange={(e) => onChange(e.target.value)}
+        style={{ flex: 1, fontSize: 11, fontFamily: 'ui-monospace, monospace',
+          background: '#0a0a0a', color: '#e4e4e7', border: '1px solid #3f3f46',
+          borderRadius: 4, padding: '3px 6px' }} />
+    </div>
+  );
+
+  return (
+    <Section title="Colors">
+      <ColorRow label="Bg"    value={c.bgColor}    onChange={(v) => update({ bgColor: v })} />
+      <ColorRow label="Block" value={c.blockColor} onChange={(v) => update({ blockColor: v })} />
+      <ColorRow label="Text"  value={c.textColor}  onChange={(v) => update({ textColor: v })} />
+    </Section>
+  );
+}
+
+function TextSection() {
+  const c = useStore((s) => s.composition);
+  const setLineText = useStore((s) => s.setLineText);
+
+  // Reconstruct text from tokens (joins with spaces; en-dash gets spaces around it).
+  const textOf = (lineIdx: number) =>
+    c.lines[lineIdx].tokens.map((t) => t.text).join(' ');
+
+  return (
+    <Section title="Text">
+      {c.lines.map((line, li) => (
+        <Field key={line.id} label={`Line ${li + 1}`}>
+          <input type="text"
+            defaultValue={textOf(li)}
+            onBlur={(e) => setLineText(li, e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+            }}
+            style={{
+              width: '100%', fontSize: 12,
+              background: '#0a0a0a', color: '#e4e4e7',
+              border: '1px solid #3f3f46', borderRadius: 4, padding: '4px 6px',
+            }} />
+        </Field>
+      ))}
+      <p style={{ fontSize: 10, color: '#71717a', lineHeight: 1.4, margin: '6px 0 0' }}>
+        Edit + blur (or press Enter) to apply. Whitespace separates words; en-dash
+        (—), em-dash (–), /, |, • are extracted as separate tokens.
+      </p>
+    </Section>
+  );
+}
+
+function DebugSection() {
+  const c = useStore((s) => s.composition);
+  const update = useStore((s) => s.updateComposition);
+
+  const Toggle = ({
+    label, value, onChange,
+  }: { label: string; value: boolean; onChange: (v: boolean) => void }) => (
+    <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, cursor: 'pointer', fontSize: 11 }}>
+      <input type="checkbox" checked={value} onChange={(e) => onChange(e.target.checked)} />
+      <span>{label}</span>
+    </label>
+  );
+
+  return (
+    <Section title="Debug">
+      <Toggle label="Show token bounds" value={c.showTokenBounds}
+        onChange={(v) => update({ showTokenBounds: v })} />
+      <Toggle label="Show line bounds" value={c.showLineBounds}
+        onChange={(v) => update({ showLineBounds: v })} />
+      <Toggle label="Show canvas grid" value={c.showCanvasGrid}
+        onChange={(v) => update({ showCanvasGrid: v })} />
+      <Toggle label="Show t value" value={c.showTValue}
+        onChange={(v) => update({ showTValue: v })} />
+      <Toggle label="Show state label" value={c.showStateLabel}
+        onChange={(v) => update({ showStateLabel: v })} />
     </Section>
   );
 }
