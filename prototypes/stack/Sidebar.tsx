@@ -285,6 +285,20 @@ function AlignmentOverridesSection() {
   const atomPalette = useStore((s) => s.atomPalette);
   const useStateC = usePulseStore((s) => s.composition.useStateC);
   const lines = usePulseStore((s) => s.composition.lines);
+  // Pull the live per-state base alignments so the "inherit" option can show
+  // exactly which alignment will be used. Selecting individual fields (not the
+  // whole composition) avoids re-rendering on every Pulse change.
+  const baseStateA = usePulseStore((s) => s.composition.stateA.alignments);
+  const baseStateB = usePulseStore((s) => s.composition.stateB.alignments);
+  const baseStateC = usePulseStore((s) => s.composition.stateC.alignments);
+  const inheritedAlignment = (
+    key: 'stateA' | 'stateB' | 'stateC', li: number,
+  ): AlignmentMode => {
+    const arr = key === 'stateA' ? baseStateA
+              : key === 'stateB' ? baseStateB
+              : baseStateC;
+    return (arr?.[li] ?? 'centered') as AlignmentMode;
+  };
   const { count: derivedAtomCount } = useDerivedAtomCount();
 
   const states: Array<{ key: 'stateA' | 'stateB' | 'stateC'; label: string }> = [
@@ -396,6 +410,7 @@ function AlignmentOverridesSection() {
                 }}>{label}</span>
                 {lines.map((_, li) => {
                   const cur = ovr[key]?.[li] ?? null;
+                  const inherited = inheritedAlignment(key, li);
                   return (
                     <select key={li} value={cur ?? '__inherit__'}
                       onChange={(e) => {
@@ -403,6 +418,9 @@ function AlignmentOverridesSection() {
                         setAtomAlignment(slotIdx, key, li,
                           v === '__inherit__' ? null : (v as AlignmentMode));
                       }}
+                      title={cur
+                        ? `Override: ${cur}`
+                        : `Inherits from Atom: ${inherited}`}
                       style={{
                         flex: 1, fontSize: 10,
                         background: cur ? '#1e293b' : '#0a0a0a',
@@ -410,7 +428,12 @@ function AlignmentOverridesSection() {
                         border: '1px solid #3f3f46', borderRadius: 3, padding: '3px 4px',
                         minWidth: 0,
                       }}>
-                      <option value="__inherit__">inherit</option>
+                      {/*
+                        Show the live inherited value next to "inherit" so the
+                        user sees exactly what would be applied without going
+                        back to Atom. Updates reactively when Pulse changes.
+                      */}
+                      <option value="__inherit__">inherit · {inherited}</option>
                       <AlignmentOptions />
                     </select>
                   );
