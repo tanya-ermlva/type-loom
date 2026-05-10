@@ -15,7 +15,7 @@ export default function App() {
     bgColor, blockColor, textColor,
     fontFamily, fontSize, letterSpacingPct,
     lineHeight, interLineGap, tokenSpacingTight,
-    edgePadding, stateA, stateB, bgBoundsModes,
+    edgePadding, stateA, stateB, stateC, useStateC, bgBoundsModes,
     loopDuration, easing, direction, phaseOffset,
     perTokenStagger, perLineOffset, bgLag,
     jitterX, jitterY, jitterSeed,
@@ -25,8 +25,8 @@ export default function App() {
   const letterSpacingPx = (fontSize * letterSpacingPct) / 100;
   const widths = useTokenWidths(lines, fontFamily, fontSize, letterSpacingPx);
 
-  // Pre-compute per-line layouts for both states.
-  const layoutsAB = useMemo(() => {
+  // Pre-compute per-line layouts for each enabled state.
+  const layoutsABC = useMemo(() => {
     if (!widths) return null;
     // jitterSeed doubles as the deterministic seed for 'scattered' alignment so the
     // same Re-seed button shuffles both jitter and scatter positions.
@@ -38,24 +38,33 @@ export default function App() {
       return {
         a: layoutLine(tw, stateA.alignments[li] ?? 'centered', opts),
         b: layoutLine(tw, stateB.alignments[li] ?? 'centered', opts),
+        c: layoutLine(tw, stateC.alignments[li] ?? 'centered', opts),
       };
     });
-  }, [widths, lines, stateA.alignments, stateB.alignments, canvasWidth, edgePadding, tokenSpacingTight, jitterSeed]);
+  }, [widths, lines, stateA.alignments, stateB.alignments, stateC.alignments, canvasWidth, edgePadding, tokenSpacingTight, jitterSeed]);
 
   // RAF loop drives a normalized progress in [0, 1].
   const [t, setT] = useState(0);
   useEffect(() => {
-    if (!playing || direction === 'freeze-A' || direction === 'freeze-B') {
-      setT(direction === 'freeze-B' ? 1 : 0);
-      return;
-    }
+    // Pause keeps the current t (so you can inspect the moment you paused on).
+    if (!playing) return;
+    // Freeze-A/B explicitly snap t. With State C enabled, freeze-B lands at
+    // progress=1/3 (start of segment B→C, i.e., showing B). Without C, freeze-B
+    // is t=1 (the natural B endpoint).
+    if (direction === 'freeze-A') { setT(0); return; }
+    if (direction === 'freeze-B') { setT(useStateC ? 1 / 3 : 1); return; }
     let raf = 0;
     const start = performance.now();
     const tick = (now: number) => {
       const elapsed = (now - start) / 1000;
       const phase = (elapsed / loopDuration + phaseOffset) % 1;
       let progress: number;
-      if (direction === 'ping-pong') {
+      // 3-state cycle (A→B→C→A) is a forward-only progression — segments
+      // are derived per-line in the render layer. Direction's ping-pong vs
+      // one-way doesn't apply to a 3-state loop.
+      if (useStateC) {
+        progress = phase;
+      } else if (direction === 'ping-pong') {
         progress = phase < 0.5 ? phase * 2 : (1 - phase) * 2;
       } else {
         progress = phase;
@@ -65,35 +74,44 @@ export default function App() {
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [playing, loopDuration, phaseOffset, direction]);
+  }, [playing, loopDuration, phaseOffset, direction, useStateC]);
 
   // Per-line interpolated positions.
   const renderedLayouts: { positions: (TokenPosition & { yJ?: number })[]; bgPositions: TokenPosition[] }[] | null =
     useMemo(() => {
-      if (!layoutsAB) return null;
-      return layoutsAB.map(({ a, b }, li) => {
+      if (!layoutsABC) return null;
+      return layoutsABC.map(({ a, b, c }, li) => {
         // Apply per-line phase offset for line index > 0.
         let lineProgress = t;
         if (li > 0) lineProgress = ((t + perLineOffset) % 1 + 1) % 1;
         const lineEase = easings[easing];
         const totalTokens = a.length;
+        // Sequence of per-segment endpoint pairs. With State C: A→B, B→C, C→A.
+        // Without: a single A→B segment occupies the whole [0, 1].
+        const segments: Array<[TokenPosition[], TokenPosition[]]> = useStateC
+          ? [[a, b], [b, c], [c, a]]
+          : [[a, b]];
 
-        const interp = (which: 'tokens' | 'bg') => a.map((aPos, ti) => {
-          const bPos = b[ti];
+        const interp = (which: 'tokens' | 'bg') => a.map((_, ti) => {
           const baseProg = which === 'bg'
             ? Math.max(0, lineProgress - bgLag)
             : lineProgress;
-          const tp = tokenProgress(baseProg, perTokenStagger, totalTokens, ti);
+          // Segment index + local progress within that segment.
+          const segCount = segments.length;
+          const rawSeg = baseProg * segCount;
+          const segIdx = Math.min(segCount - 1, Math.floor(rawSeg));
+          const segLocal = rawSeg - segIdx;
+          const [from, to] = segments[segIdx];
+          const fromPos = from[ti];
+          const toPos = to[ti];
+          const tp = tokenProgress(segLocal, perTokenStagger, totalTokens, ti);
           const eased = lineEase(tp);
-          const x = lerp(aPos.x, bPos.x, eased);
-          // Lerp width and scaleX too so 'stretched' alignment animates smoothly.
-          const width = lerp(aPos.width, bPos.width, eased);
-          const scaleA = aPos.scaleX ?? 1;
-          const scaleB = bPos.scaleX ?? 1;
-          const scaleX = lerp(scaleA, scaleB, eased);
+          const x = lerp(fromPos.x, toPos.x, eased);
+          const width = lerp(fromPos.width, toPos.width, eased);
+          const scaleX = lerp(fromPos.scaleX ?? 1, toPos.scaleX ?? 1, eased);
           const yJ = jitterY > 0 ? jitterFor(jitterSeed + 1000 * li, ti) * jitterY : 0;
           const xJ = jitterX > 0 ? jitterFor(jitterSeed + li, ti) * jitterX : 0;
-          return { id: aPos.id, x: x + xJ, width, scaleX, yJ };
+          return { id: fromPos.id, x: x + xJ, width, scaleX, yJ };
         });
 
         const tokens = interp('tokens');
@@ -101,7 +119,7 @@ export default function App() {
         const bgPositions = interp('bg').map(({ id, x, width }) => ({ id, x, width }));
         return { positions: tokens, bgPositions };
       });
-    }, [layoutsAB, t, easing, perTokenStagger, perLineOffset, bgLag, jitterX, jitterY, jitterSeed]);
+    }, [layoutsABC, t, easing, perTokenStagger, perLineOffset, bgLag, jitterX, jitterY, jitterSeed, useStateC]);
 
   return (
     <div style={{
@@ -214,7 +232,15 @@ export default function App() {
             {showTValue && showStateLabel && '  ·  '}
             {showStateLabel && (
               <span style={{ fontWeight: 700 }}>
-                {t < 0.05 ? 'A' : t > 0.95 ? 'B' : '↔'}
+                {useStateC
+                  ? (t < 0.03 || t > 0.97
+                      ? 'A'
+                      : Math.abs(t - 1 / 3) < 0.03
+                        ? 'B'
+                        : Math.abs(t - 2 / 3) < 0.03
+                          ? 'C'
+                          : '↔')
+                  : (t < 0.05 ? 'A' : t > 0.95 ? 'B' : '↔')}
               </span>
             )}
           </div>

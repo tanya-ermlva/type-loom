@@ -96,7 +96,7 @@ function LayoutSection() {
   const c = useStore((s) => s.composition);
   const update = useStore((s) => s.updateComposition);
 
-  const setStateAlignment = (state: 'stateA' | 'stateB', lineIdx: number, mode: AlignmentMode) => {
+  const setStateAlignment = (state: 'stateA' | 'stateB' | 'stateC', lineIdx: number, mode: AlignmentMode) => {
     const next = c[state].alignments.slice();
     next[lineIdx] = mode;
     update({ [state]: { alignments: next } } as Partial<typeof c>);
@@ -149,6 +149,34 @@ function LayoutSection() {
           </select>
         </Field>
       ))}
+      <label style={{
+        display: 'flex', alignItems: 'center', gap: 8,
+        marginTop: 10, marginBottom: 4, cursor: 'pointer', fontSize: 11,
+      }}>
+        <input type="checkbox" checked={!!c.useStateC}
+          onChange={(e) => update({ useStateC: e.target.checked })} />
+        <span>Add State C (cycle becomes A → B → C → A)</span>
+      </label>
+      {c.useStateC && (
+        <>
+          <div style={{ marginTop: 8, marginBottom: 4, fontSize: 10, color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.12em' }}>State C alignments</div>
+          {c.lines.map((_, li) => (
+            <Field key={`c-${li}`} label={`Line ${li + 1}`}>
+              <select value={c.stateC?.alignments[li] ?? 'centered'}
+                onChange={(e) => setStateAlignment('stateC', li, e.target.value as AlignmentMode)}
+                style={selectStyle}>
+                {ALIGNMENT_OPTIONS.map((m) => <option key={m} value={m}>{m}</option>)}
+              </select>
+            </Field>
+          ))}
+          <p style={{ fontSize: 10, color: '#71717a', lineHeight: 1.5, margin: '4px 0 6px' }}>
+            With State C on, the cycle is forward-only (A → B → C → A); ping-pong vs
+            one-way directions don't apply. Freeze-A pins to A, Freeze-B pins to B —
+            to inspect C, pause and slide <b style={{ color: '#a1a1aa' }}>Phase off</b>{' '}
+            to ~0.67.
+          </p>
+        </>
+      )}
       <div style={{ marginTop: 10 }}>
         <Slider label="Canvas W" value={c.canvasWidth} min={1200} max={2400} step={10}
           onChange={(v) => update({ canvasWidth: v })} />

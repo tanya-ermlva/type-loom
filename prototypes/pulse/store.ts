@@ -61,6 +61,9 @@ export interface Composition {
   // Layout per state
   stateA: { alignments: AlignmentMode[] };
   stateB: { alignments: AlignmentMode[] };
+  /** Optional third state. When `useStateC` is true, the cycle becomes A→B→C→A. */
+  stateC: { alignments: AlignmentMode[] };
+  useStateC: boolean;
   edgePadding: number;
   /**
    * Per-line bg fill mode. One entry per line.
@@ -117,6 +120,8 @@ export const DEFAULT_COMPOSITION: Composition = {
   tokenSpacingTight: 36,
   stateA: { alignments: ['centered', 'centered'] },
   stateB: { alignments: ['left', 'justified'] },
+  stateC: { alignments: ['right', 'centered'] },
+  useStateC: false,
   edgePadding: 0,
   bgBoundsModes: ['continuous', 'continuous'],
   loopDuration: 2.0,
