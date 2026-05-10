@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { useStore } from './store';
-import type { DirectionMode, EasingMode } from './store';
+import type { AlignmentMode, DirectionMode, EasingMode } from './store';
 
 const EASING_OPTIONS: EasingMode[] = [
   'linear', 'easeIn', 'easeOut', 'easeInOut',
@@ -9,6 +9,7 @@ const EASING_OPTIONS: EasingMode[] = [
 const DIRECTION_OPTIONS: DirectionMode[] = [
   'ping-pong', 'one-way', 'freeze-A', 'freeze-B',
 ];
+const ALIGNMENT_OPTIONS: AlignmentMode[] = ['left', 'right', 'centered', 'justified'];
 
 export function Sidebar() {
   return (
@@ -18,6 +19,8 @@ export function Sidebar() {
     }}>
       <PlaybackSection />
       <TypographySection />
+      <LayoutSection />
+      <AnimationCharacterSection />
     </aside>
   );
 }
@@ -77,6 +80,66 @@ function TypographySection() {
         onChange={(v) => update({ interLineGap: v })} />
       <Slider label="Token sp" value={c.tokenSpacingTight} min={0} max={80} step={1}
         onChange={(v) => update({ tokenSpacingTight: v })} />
+    </Section>
+  );
+}
+
+function LayoutSection() {
+  const c = useStore((s) => s.composition);
+  const update = useStore((s) => s.updateComposition);
+
+  const setStateAlignment = (state: 'stateA' | 'stateB', lineIdx: number, mode: AlignmentMode) => {
+    const next = c[state].alignments.slice();
+    next[lineIdx] = mode;
+    update({ [state]: { alignments: next } } as Partial<typeof c>);
+  };
+
+  return (
+    <Section title="Layout">
+      <Slider label="Edge pad" value={c.edgePadding} min={0} max={200} step={1}
+        onChange={(v) => update({ edgePadding: v })} />
+      <div style={{ marginTop: 8, marginBottom: 4, fontSize: 10, color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.12em' }}>State A alignments</div>
+      {c.lines.map((_, li) => (
+        <Field key={`a-${li}`} label={`Line ${li + 1}`}>
+          <select value={c.stateA.alignments[li] ?? 'centered'}
+            onChange={(e) => setStateAlignment('stateA', li, e.target.value as AlignmentMode)}
+            style={selectStyle}>
+            {ALIGNMENT_OPTIONS.map((m) => <option key={m} value={m}>{m}</option>)}
+          </select>
+        </Field>
+      ))}
+      <div style={{ marginTop: 8, marginBottom: 4, fontSize: 10, color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.12em' }}>State B alignments</div>
+      {c.lines.map((_, li) => (
+        <Field key={`b-${li}`} label={`Line ${li + 1}`}>
+          <select value={c.stateB.alignments[li] ?? 'centered'}
+            onChange={(e) => setStateAlignment('stateB', li, e.target.value as AlignmentMode)}
+            style={selectStyle}>
+            {ALIGNMENT_OPTIONS.map((m) => <option key={m} value={m}>{m}</option>)}
+          </select>
+        </Field>
+      ))}
+      <div style={{ marginTop: 10 }}>
+        <Slider label="Canvas W" value={c.canvasWidth} min={1200} max={2400} step={10}
+          onChange={(v) => update({ canvasWidth: v })} />
+        <Slider label="Canvas H" value={c.canvasHeight} min={160} max={600} step={1}
+          onChange={(v) => update({ canvasHeight: v })} />
+      </div>
+    </Section>
+  );
+}
+
+function AnimationCharacterSection() {
+  const c = useStore((s) => s.composition);
+  const update = useStore((s) => s.updateComposition);
+
+  return (
+    <Section title="Animation character">
+      <Slider label="Stagger" value={c.perTokenStagger} min={0} max={0.5} step={0.01}
+        onChange={(v) => update({ perTokenStagger: v })} format={(v) => v.toFixed(2)} />
+      <Slider label="Line off" value={c.perLineOffset} min={0} max={1} step={0.01}
+        onChange={(v) => update({ perLineOffset: v })} format={(v) => v.toFixed(2)} />
+      <Slider label="Bg lag" value={c.bgLag} min={0} max={0.3} step={0.01}
+        onChange={(v) => update({ bgLag: v })} format={(v) => v.toFixed(2)} />
     </Section>
   );
 }
