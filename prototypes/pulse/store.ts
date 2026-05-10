@@ -149,8 +149,8 @@ export const DEFAULT_COMPOSITION: Composition = {
   edgePadding: 0,
   bgBoundsModes: ['continuous', 'continuous'],
   loopDuration: 2.0,
-  easing: 'easeInOutQuad',
-  easingCurve: { x1: 0.25, y1: 0.1, x2: 0.25, y2: 1 }, // CSS "ease"
+  easing: 'cubic-bezier',
+  easingCurve: { x1: 0.84, y1: 0.02, x2: 0.25, y2: 1.00 },
   direction: 'ping-pong',
   phaseOffset: 0,
   perTokenStagger: 0,
