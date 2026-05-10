@@ -9,7 +9,9 @@ export default function App() {
   const composition = useStore((s) => s.composition);
   const playing = useStore((s) => s.playing);
   const setPlaying = useStore((s) => s.setPlaying);
-  const [exportT, setExportT] = useState<number | null>(null);
+  // Raw cycle phase (0..1, pre-ping-pong remap). Atom does the remap internally
+  // so trails lag in real time and stay direction-correct in both halves.
+  const [exportPhase, setExportPhase] = useState<number | null>(null);
 
   return (
     <div style={{
@@ -33,7 +35,7 @@ export default function App() {
             aspectRatio: `${composition.canvasWidth} / ${composition.canvasHeight}`,
           }}>
             <Atom composition={composition} playing={playing} debug
-              tOverride={exportT} svgId="atom-export-target" />
+              phaseOverride={exportPhase} svgId="atom-export-target" />
           </div>
 
           {/* Bottom-left play/pause */}
@@ -48,15 +50,12 @@ export default function App() {
         </div>
         <ExportContext.Provider value={{
           prepareFrame: (f, fps) => {
+            // Pass raw phase only — Atom maps it through ping-pong/useStateC.
             const frameTime = f / fps;
             const phase = (frameTime / Math.max(0.05, composition.loopDuration) + composition.phaseOffset) % 1;
-            let t: number;
-            if (composition.useStateC) t = phase;
-            else if (composition.direction === 'ping-pong') t = phase < 0.5 ? phase * 2 : (1 - phase) * 2;
-            else t = phase;
-            setExportT(t);
+            setExportPhase(phase);
           },
-          finishExport: () => setExportT(null),
+          finishExport: () => setExportPhase(null),
           getSvg: () => document.getElementById('atom-export-target') as SVGSVGElement | null,
         }}>
           <Sidebar />

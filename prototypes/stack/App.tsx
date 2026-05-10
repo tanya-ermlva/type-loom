@@ -149,14 +149,12 @@ export default function App() {
               const topPct = ((slotIdx * atomH - localScrollY) / canvas.height) * 100;
               const heightPct = (atomH / canvas.height) * 100;
               const widthPct = (atomW / canvas.width) * 100;
-              // During export, override each atom's RAF with virtual-time-derived t.
-              let tOverride: number | null = null;
-              if (exporting) {
-                const phase = (virtualTime / Math.max(0.05, atom.loopDuration) + atom.phaseOffset) % 1;
-                if (atom.useStateC) tOverride = phase;
-                else if (atom.direction === 'ping-pong') tOverride = phase < 0.5 ? phase * 2 : (1 - phase) * 2;
-                else tOverride = phase;
-              }
+              // During export, override each atom's RAF with the virtual-time-
+              // derived raw phase. Atom maps phase → progress internally so
+              // trails lag correctly in the reverse half of ping-pong.
+              const phaseOverride = exporting
+                ? (virtualTime / Math.max(0.05, atom.loopDuration) + atom.phaseOffset) % 1
+                : null;
               return (
                 <div key={`slot-${slotIdx}`} className="stack-slot"
                   data-slot-x={`${(100 - widthPct) / 2}`}
@@ -170,7 +168,7 @@ export default function App() {
                     width: `${widthPct}%`,
                     height: `${heightPct}%`,
                   }}>
-                  <Atom composition={atom} playing={playing} tOverride={tOverride}
+                  <Atom composition={atom} playing={playing} phaseOverride={phaseOverride}
                     widthsOverride={sharedWidths} />
                 </div>
               );
