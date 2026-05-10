@@ -282,61 +282,132 @@ function AlignmentOverridesSection() {
   const overrides = useStore((s) => s.atomAlignmentOverrides);
   const setAtomAlignment = useStore((s) => s.setAtomAlignment);
   const resetAtomAlignments = useStore((s) => s.resetAtomAlignments);
+  const atomPalette = useStore((s) => s.atomPalette);
   const useStateC = usePulseStore((s) => s.composition.useStateC);
-  const lineCount = usePulseStore((s) => s.composition.lines.length);
+  const lines = usePulseStore((s) => s.composition.lines);
+  const { count: derivedAtomCount } = useDerivedAtomCount();
 
   const states: Array<{ key: 'stateA' | 'stateB' | 'stateC'; label: string }> = [
-    { key: 'stateA', label: 'A' },
-    { key: 'stateB', label: 'B' },
-    ...(useStateC ? [{ key: 'stateC' as const, label: 'C' }] : []),
+    { key: 'stateA', label: 'State A' },
+    { key: 'stateB', label: 'State B' },
+    ...(useStateC ? [{ key: 'stateC' as const, label: 'State C' }] : []),
   ];
+
+  // For slot i, list which atoms (1-indexed) use it: i+1, i+1+SLOT_COUNT, ...
+  // up to the current derived count. So user sees "atom 1 + atom 5 + atom 9" etc.
+  const atomsUsingSlot = (slotIdx: number): number[] => {
+    const arr: number[] = [];
+    for (let i = slotIdx; i < derivedAtomCount; i += SLOT_COUNT) arr.push(i + 1);
+    return arr;
+  };
+
+  // Short preview of a line's first ~22 chars, joined from token texts.
+  const linePreview = (li: number): string => {
+    const text = (lines[li]?.tokens ?? []).map((t) => t.text).join(' ');
+    return text.length > 22 ? text.slice(0, 22) + '…' : text;
+  };
 
   return (
     <Section title="Alignment overrides">
       <p style={{ fontSize: 10, color: '#71717a', lineHeight: 1.4, margin: '0 0 10px' }}>
-        Override per-atom per-line alignment. {SLOT_COUNT} slots — atoms beyond slot {SLOT_COUNT} cycle back
-        (atom {SLOT_COUNT + 1} reuses slot 1, etc.). Leave on <b>inherit</b> to use the value from{' '}
-        <a href="../pulse/" style={{ color: '#60a5fa' }}>Atom</a>.
+        Override per-line alignment for atoms in this slot. {SLOT_COUNT} slots total —
+        atoms in the stack cycle through them (atom 5 reuses slot 1, atom 6 reuses slot 2, etc.).
+        Each row is a state (A / B), each column is a line of text. Leave any dropdown on{' '}
+        <b>inherit</b> to use the value from <a href="../pulse/" style={{ color: '#60a5fa' }}>Atom</a>.
       </p>
-      {Array.from({ length: SLOT_COUNT }, (_, atomIdx) => {
-        const ovr = overrides[atomIdx] ?? {};
+      {Array.from({ length: SLOT_COUNT }, (_, slotIdx) => {
+        const ovr = overrides[slotIdx] ?? {};
         const hasAny = !!(ovr.stateA || ovr.stateB || ovr.stateC);
+        const atomsList = atomsUsingSlot(slotIdx);
+        const swatch = atomPalette[slotIdx]?.blockColor ?? '#3f3f46';
         return (
-          <div key={`atom-${atomIdx}`} style={{
-            border: '1px solid #27272a', borderRadius: 4, padding: 8, marginBottom: 8,
+          <div key={`slot-${slotIdx}`} style={{
+            border: '1px solid #27272a', borderRadius: 4, padding: 8, marginBottom: 10,
           }}>
+            {/* Header row: colour swatch + slot label + which atoms use it + reset */}
             <div style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              marginBottom: 6, fontSize: 10, color: '#a1a1aa',
-              textTransform: 'uppercase', letterSpacing: '0.12em',
+              marginBottom: 8,
             }}>
-              <span>Slot {atomIdx + 1}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                <span style={{
+                  width: 14, height: 14, borderRadius: 3,
+                  background: swatch, flexShrink: 0,
+                  border: '1px solid rgba(255,255,255,0.1)',
+                }} />
+                <div style={{ minWidth: 0 }}>
+                  <div style={{
+                    fontSize: 10, color: '#e4e4e7', fontWeight: 600,
+                    textTransform: 'uppercase', letterSpacing: '0.08em',
+                  }}>
+                    Slot {slotIdx + 1}
+                  </div>
+                  <div style={{
+                    fontSize: 10, color: '#71717a',
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }} title={atomsList.length ? `Affects atom${atomsList.length > 1 ? 's' : ''} ${atomsList.join(', ')}` : 'No atoms in stack at current canvas size'}>
+                    {atomsList.length === 0
+                      ? '— no atoms (canvas too short)'
+                      : `→ atom${atomsList.length > 1 ? 's' : ''} ${atomsList.join(', ')}`}
+                  </div>
+                </div>
+              </div>
               {hasAny && (
-                <button onClick={() => resetAtomAlignments(atomIdx)}
+                <button onClick={() => resetAtomAlignments(slotIdx)}
                   style={{
                     background: 'transparent', border: 0, color: '#71717a',
-                    fontSize: 10, cursor: 'pointer', padding: 0,
+                    fontSize: 10, cursor: 'pointer', padding: 0, flexShrink: 0,
                   }}
-                  title="Reset all overrides for this slot">reset</button>
+                  title="Clear all alignment overrides for this slot">reset</button>
               )}
             </div>
+
+            {/* Column headers — Line N + preview text */}
+            <div style={{
+              display: 'flex', alignItems: 'flex-end', gap: 6, marginBottom: 4,
+              paddingLeft: 60,  // matches the State label width
+            }}>
+              {lines.map((_, li) => (
+                <div key={li} style={{
+                  flex: 1, minWidth: 0,
+                  fontSize: 9, color: '#71717a', lineHeight: 1.3,
+                }}>
+                  <div style={{ textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                    Line {li + 1}
+                  </div>
+                  <div style={{
+                    color: '#52525b', fontStyle: 'italic',
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }} title={linePreview(li)}>
+                    {linePreview(li)}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* State rows */}
             {states.map(({ key, label }) => (
-              <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                <span style={{ width: 18, fontSize: 11, color: '#a1a1aa', fontWeight: 600 }}>{label}</span>
-                {Array.from({ length: lineCount }, (_, li) => {
+              <div key={key} style={{
+                display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4,
+              }}>
+                <span style={{
+                  width: 54, fontSize: 11, color: '#a1a1aa', fontWeight: 600,
+                  flexShrink: 0,
+                }}>{label}</span>
+                {lines.map((_, li) => {
                   const cur = ovr[key]?.[li] ?? null;
                   return (
                     <select key={li} value={cur ?? '__inherit__'}
                       onChange={(e) => {
                         const v = e.target.value;
-                        setAtomAlignment(atomIdx, key, li,
+                        setAtomAlignment(slotIdx, key, li,
                           v === '__inherit__' ? null : (v as AlignmentMode));
                       }}
                       style={{
                         flex: 1, fontSize: 10,
                         background: cur ? '#1e293b' : '#0a0a0a',
                         color: cur ? '#e4e4e7' : '#71717a',
-                        border: '1px solid #3f3f46', borderRadius: 3, padding: '2px 4px',
+                        border: '1px solid #3f3f46', borderRadius: 3, padding: '3px 4px',
                         minWidth: 0,
                       }}>
                       <option value="__inherit__">inherit</option>
