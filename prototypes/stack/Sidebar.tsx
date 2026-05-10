@@ -17,6 +17,7 @@ import { useStore as usePulseStore, ALIGNMENT_GROUPS, type AlignmentMode, type C
 import { CurveEditor } from '../pulse/CurveEditor';
 import { useExportContext } from '../pulse/ExportContext';
 import { exportPngSequence } from '../pulse/export';
+import { ProjectSection } from '../shared/ProjectSection';
 
 /** Renders all alignment modes as <optgroup>-grouped <option>s — same UI as Pulse. */
 function AlignmentOptions() {
@@ -78,6 +79,7 @@ export function Sidebar() {
       width: 320, flexShrink: 0, borderLeft: '1px solid #27272a',
       background: '#18181b', color: '#e4e4e7', overflowY: 'auto', fontSize: 12,
     }}>
+      <ProjectSection Section={Section} />
       <NoteSection />
       <CanvasSection />
       <ScrollSection />

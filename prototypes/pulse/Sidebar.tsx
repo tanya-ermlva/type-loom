@@ -5,6 +5,7 @@ import type { AlignmentMode, BgFillMode, CharacterEffect, CubicBezierCurve, Dire
 import { CurveEditor } from './CurveEditor';
 import { useExportContext } from './ExportContext';
 import { exportPngSequence } from './export';
+import { ProjectSection } from '../shared/ProjectSection';
 
 const EASING_OPTIONS: EasingMode[] = [
   'linear',
@@ -43,6 +44,7 @@ export function Sidebar() {
       width: 320, flexShrink: 0, borderLeft: '1px solid #27272a',
       background: '#18181b', color: '#e4e4e7', overflowY: 'auto', fontSize: 12,
     }}>
+      <ProjectSection Section={Section} />
       <PlaybackSection />
       <ExportSection />
       <TypographySection />
