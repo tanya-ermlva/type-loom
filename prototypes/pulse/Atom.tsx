@@ -147,9 +147,16 @@ export function Atom({
     if (!widths) return null;
     const opts = { canvasWidth, edgePadding, tokenSpacingTight, scatterSeed: jitterSeed };
     return lines.map((line, li) => {
-      const tw: TokenWidth[] = line.tokens.map((tok) => ({
-        id: tok.id, width: widths.get(tok.id)?.width ?? 0,
-      }));
+      const tw: TokenWidth[] = line.tokens.map((tok) => {
+        const tm = widths.get(tok.id);
+        return {
+          id: tok.id,
+          width: tm?.width ?? 0,
+          // Per-letter ink widths feed `justified-chars` alignment. Other modes
+          // ignore them, so this is harmless when present.
+          letterWidths: tm?.letters.map((l) => l.width),
+        };
+      });
       return {
         a: layoutLine(tw, stateA?.alignments?.[li] ?? 'centered', opts),
         b: layoutLine(tw, stateB?.alignments?.[li] ?? 'centered', opts),
@@ -195,16 +202,24 @@ export function Atom({
         const fromPos = from[ti] ?? a[ti];
         const toPos = to[ti] ?? a[ti];
         if (!fromPos || !toPos) {
-          return { id: a[ti]?.id ?? `pad-${ti}`, x: 0, width: 0, scaleX: 1, yJ: 0, eased: 0 };
+          return { id: a[ti]?.id ?? `pad-${ti}`, x: 0, width: 0, scaleX: 1, ls: letterSpacingPx, yJ: 0, eased: 0 };
         }
         const tp = tokenProgress(segLocal, perTokenStagger, totalTokens, ti);
         const eased = lineEase(tp);
         const x = lerp(fromPos.x, toPos.x, eased);
         const width = lerp(fromPos.width, toPos.width, eased);
         const scaleX = lerp(fromPos.scaleX ?? 1, toPos.scaleX ?? 1, eased);
+        // Lerp letter-spacing override per token. When neither end-state uses
+        // `justified-chars`, both fall back to the natural letterSpacingPx and
+        // the lerp is a no-op — same as before.
+        const ls = lerp(
+          fromPos.letterSpacingPx ?? letterSpacingPx,
+          toPos.letterSpacingPx ?? letterSpacingPx,
+          eased,
+        );
         const yJ = jitterY > 0 ? jitterFor(jitterSeed + 1000 * li, ti) * jitterY : 0;
         const xJ = jitterX > 0 ? jitterFor(jitterSeed + li, ti) * jitterX : 0;
-        return { id: fromPos.id, x: x + xJ, width, scaleX, yJ, eased };
+        return { id: fromPos.id, x: x + xJ, width, scaleX, ls, yJ, eased };
       });
 
       // 'tokens' code path uses zero lag; main bg uses bgLag; trails layer
@@ -285,6 +300,16 @@ export function Atom({
               if (renderPerChar) {
                 const totalChars = tokMetrics.letters.length;
                 const segLocal = p.eased ?? 0;
+                // Use the lerped letter-spacing override (falls back to natural).
+                // Rebuild per-letter offsets from glyph widths so animated spacing
+                // (e.g. tween into `justified-chars`) is reflected in per-char render.
+                const ls = p.ls ?? letterSpacingPx;
+                let runX = 0;
+                const letterOffsets = tokMetrics.letters.map((lm, ci) => {
+                  const off = runX;
+                  runX += lm.width + (ci < tokMetrics.letters.length - 1 ? ls : 0);
+                  return off;
+                });
                 return (
                   <g key={tok.id}>
                     {Array.from(tok.text).map((ch, ci) => {
@@ -292,7 +317,7 @@ export function Atom({
                       if (!lm) return null;
                       const charLocal = tokenProgress(segLocal, characterStagger, totalChars, ci);
                       const eff = characterEffect(charEffectMode, ci, totalChars, charLocal, characterAmplitude);
-                      const cx = p.x + lm.offsetX;
+                      const cx = p.x + letterOffsets[ci];
                       const cy = tokY;
                       const cxCenter = cx + lm.width / 2;
                       const transforms: string[] = [];
@@ -322,7 +347,9 @@ export function Atom({
                   key={tok.id}
                   x={p.x} y={tokY}
                   fontFamily={fontFamily} fontSize={fontSize}
-                  letterSpacing={letterSpacingPx} fill={textColor}
+                  // Use the lerped per-token letter-spacing override
+                  // (justified-chars sets it; other modes fall back to natural).
+                  letterSpacing={p.ls ?? letterSpacingPx} fill={textColor}
                   style={{ dominantBaseline: 'alphabetic' }}
                   {...(useStretch ? { textLength: p.width, lengthAdjust: 'spacingAndGlyphs' as const } : {})}
                 >{tok.text}</text>

@@ -19,6 +19,9 @@ export type AlignmentMode =
   | 'right'
   | 'centered'
   | 'justified'
+  | 'justified-chars'   // every CHARACTER in the line is evenly spaced; first letter
+                        // at left edge, last letter at right edge. intra-token and
+                        // inter-token gaps are identical
   | 'stretched'         // each token grows in width (scaleX) to fill the line, no gaps
   | 'gravity-left'      // tokens cluster at left, exponentially growing gaps toward right
   | 'gravity-right'     // mirror of gravity-left

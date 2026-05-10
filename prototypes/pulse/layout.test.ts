@@ -84,6 +84,71 @@ describe('layoutLine', () => {
     ]);
   });
 
+  // ---------- justified-chars ----------
+
+  it('justified-chars: every character has equal gap (intra and inter token)', () => {
+    // 2 tokens: "ab" (letters [40, 40]) and "cde" (letters [30, 30, 30]).
+    // totalChars = 5, totalInk = 80 + 90 = 170, inner = 1000.
+    // gap = (1000 - 170) / (5 - 1) = 207.5
+    // tok 0 width = 80 + (2-1)*207.5 = 287.5
+    // tok 1 width = 90 + (3-1)*207.5 = 505
+    // tok 0 starts at 0, tok 1 starts at 0 + 287.5 + 207.5 = 495
+    // last char ends at 495 + 505 = 1000 ✓
+    const tokens = [
+      { id: 'a', width: 80, letterWidths: [40, 40] },
+      { id: 'b', width: 90, letterWidths: [30, 30, 30] },
+    ];
+    const positions = layoutLine(tokens, 'justified-chars', {
+      canvasWidth: 1000, edgePadding: 0, tokenSpacingTight: 999, // ignored
+    });
+    expect(positions).toEqual([
+      { id: 'a', x: 0,   width: 287.5, letterSpacingPx: 207.5 },
+      { id: 'b', x: 495, width: 505,   letterSpacingPx: 207.5 },
+    ]);
+  });
+
+  it('justified-chars respects edgePadding', () => {
+    // inner = 800, totalChars = 4, totalInk = 200. gap = 600/3 = 200.
+    // tok 0 = "ab" (100+100): width = 200 + 200 = 400, starts at 50.
+    // tok 1 = "cd" (50+50):   width = 100 + 200 = 300, starts at 50+400+200 = 650.
+    // last char ends at 650+300 = 950 = canvasWidth - edgePadding ✓
+    const tokens = [
+      { id: 'a', width: 200, letterWidths: [100, 100] },
+      { id: 'b', width: 100, letterWidths: [50, 50] },
+    ];
+    const positions = layoutLine(tokens, 'justified-chars', {
+      canvasWidth: 1000, edgePadding: 50, tokenSpacingTight: 0,
+    });
+    expect(positions).toEqual([
+      { id: 'a', x: 50,  width: 400, letterSpacingPx: 200 },
+      { id: 'b', x: 650, width: 300, letterSpacingPx: 200 },
+    ]);
+  });
+
+  it('justified-chars: single char in line falls back to centered (no gaps to spread)', () => {
+    const tokens = [{ id: 'a', width: 100, letterWidths: [100] }];
+    const positions = layoutLine(tokens, 'justified-chars', {
+      canvasWidth: 1000, edgePadding: 0, tokenSpacingTight: 0,
+    });
+    expect(positions).toEqual([{ id: 'a', x: 450, width: 100 }]);
+  });
+
+  it('justified-chars: missing letterWidths falls back to centered packing', () => {
+    // Simulates the brief moment after a font change where measurement is in flight.
+    const tokens = [
+      { id: 'a', width: 100 },
+      { id: 'b', width: 100 },
+    ];
+    const positions = layoutLine(tokens, 'justified-chars', {
+      canvasWidth: 1000, edgePadding: 0, tokenSpacingTight: 50,
+    });
+    // contentW = 100+50+100 = 250, startX = (1000-250)/2 = 375.
+    expect(positions).toEqual([
+      { id: 'a', x: 375, width: 100 },
+      { id: 'b', x: 525, width: 100 },
+    ]);
+  });
+
   // ---------- New alignment modes ----------
 
   it('stretched: scales each token width to fill the line', () => {

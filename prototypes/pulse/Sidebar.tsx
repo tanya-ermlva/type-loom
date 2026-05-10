@@ -24,7 +24,7 @@ const DIRECTION_OPTIONS: DirectionMode[] = [
   'ping-pong', 'one-way', 'freeze-A', 'freeze-B',
 ];
 const ALIGNMENT_OPTIONS: AlignmentMode[] = [
-  'left', 'right', 'centered', 'justified',
+  'left', 'right', 'centered', 'justified', 'justified-chars',
   'stretched', 'gravity-left', 'gravity-right', 'hugging-edges',
   'scattered', 'mirrored', 'offset-justified', 'exploded',
 ];

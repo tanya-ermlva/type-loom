@@ -4,6 +4,12 @@ import { jitterFor } from './animation';
 export interface TokenWidth {
   id: string;
   width: number;
+  /**
+   * Optional per-character ink widths (one per glyph, no letter-spacing baked in).
+   * Required for `justified-chars` alignment so the layout can compute the global
+   * character gap. Other modes ignore it.
+   */
+  letterWidths?: number[];
 }
 
 export interface TokenPosition {
@@ -14,6 +20,12 @@ export interface TokenPosition {
   /** Optional horizontal scale factor (default 1). Used by 'stretched' mode so the
    *  renderer can apply `textLength` for proportional glyph stretching. */
   scaleX?: number;
+  /**
+   * Optional per-token letter-spacing override (px). Set by `justified-chars`
+   * so each token's letters track out to the global character gap. The renderer
+   * falls back to the composition's natural letter-spacing when this is unset.
+   */
+  letterSpacingPx?: number;
 }
 
 export interface LayoutOpts {
@@ -33,6 +45,7 @@ export function layoutLine(
 
   switch (mode) {
     case 'justified':       return layoutJustified(tokens, opts);
+    case 'justified-chars': return layoutJustifiedChars(tokens, opts);
     case 'stretched':       return layoutStretched(tokens, opts);
     case 'gravity-left':    return layoutGravity(tokens, opts, 'left');
     case 'gravity-right':   return layoutGravity(tokens, opts, 'right');
@@ -69,6 +82,44 @@ function layoutPacked(
   return tokens.map((t) => {
     const pos: TokenPosition = { id: t.id, x, width: t.width };
     x += t.width + tokenSpacingTight;
+    return pos;
+  });
+}
+
+/**
+ * `justified-chars` — every CHARACTER in the line gets equal spacing (intra-token
+ * AND inter-token gaps are identical). The first letter sits at edgePadding, the
+ * last letter at canvasWidth − edgePadding. Each returned token carries a
+ * `letterSpacingPx` override the renderer uses to track its glyphs out to fill
+ * its allocated slot.
+ *
+ * Math:
+ *   • totalInk    = Σ letter widths across all tokens
+ *   • totalChars  = Σ letter counts across all tokens
+ *   • gap         = (innerWidth − totalInk) / (totalChars − 1)
+ *   • token width = inkSum + (chars − 1) · gap
+ *   • next token starts at: prev.x + prev.width + gap   (same gap as inter-letter)
+ *
+ * Falls back to centred packing if metrics are missing or there's only one
+ * character in the line (no gaps to distribute).
+ */
+function layoutJustifiedChars(tokens: TokenWidth[], opts: LayoutOpts): TokenPosition[] {
+  // Need per-letter widths from every token. If any token lacks them
+  // (font not measured yet), gracefully fall back rather than NaN-out.
+  if (tokens.some((t) => !t.letterWidths)) return layoutPacked(tokens, 'centered', opts);
+  const { canvasWidth, edgePadding } = opts;
+  const inner = canvasWidth - 2 * edgePadding;
+  const inkPerToken = tokens.map((t) => sum(t.letterWidths!));
+  const totalInk = sum(inkPerToken);
+  const totalChars = tokens.reduce((s, t) => s + t.letterWidths!.length, 0);
+  if (totalChars <= 1) return layoutPacked(tokens, 'centered', opts);
+  const gap = (inner - totalInk) / (totalChars - 1);
+  let x = edgePadding;
+  return tokens.map((t, i) => {
+    const chars = t.letterWidths!.length;
+    const tokWidth = inkPerToken[i] + Math.max(0, chars - 1) * gap;
+    const pos: TokenPosition = { id: t.id, x, width: tokWidth, letterSpacingPx: gap };
+    x += tokWidth + gap;
     return pos;
   });
 }
