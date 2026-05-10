@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { useStore } from './store';
-import type { AlignmentMode, DirectionMode, EasingMode } from './store';
+import type { AlignmentMode, BgFillMode, DirectionMode, EasingMode } from './store';
 
 const EASING_OPTIONS: EasingMode[] = [
   'linear', 'easeIn', 'easeOut', 'easeInOut',
@@ -9,7 +9,11 @@ const EASING_OPTIONS: EasingMode[] = [
 const DIRECTION_OPTIONS: DirectionMode[] = [
   'ping-pong', 'one-way', 'freeze-A', 'freeze-B',
 ];
-const ALIGNMENT_OPTIONS: AlignmentMode[] = ['left', 'right', 'centered', 'justified'];
+const ALIGNMENT_OPTIONS: AlignmentMode[] = [
+  'left', 'right', 'centered', 'justified',
+  'stretched', 'gravity-left', 'gravity-right', 'hugging-edges',
+  'scattered', 'mirrored', 'offset-justified', 'exploded',
+];
 
 export function Sidebar() {
   return (
@@ -98,10 +102,33 @@ function LayoutSection() {
     update({ [state]: { alignments: next } } as Partial<typeof c>);
   };
 
+  const setBgFillMode = (lineIdx: number, mode: BgFillMode) => {
+    const next = (c.bgBoundsModes ?? []).slice();
+    next[lineIdx] = mode;
+    update({ bgBoundsModes: next });
+  };
+
   return (
     <Section title="Layout">
       <Slider label="Edge pad" value={c.edgePadding} min={0} max={200} step={1}
         onChange={(v) => update({ edgePadding: v })} />
+      <div style={{ marginTop: 8, marginBottom: 4, fontSize: 10, color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.12em' }}>BG fill (per line)</div>
+      {c.lines.map((_, li) => (
+        <Field key={`bg-${li}`} label={`Line ${li + 1}`}>
+          <select value={c.bgBoundsModes?.[li] ?? 'continuous'}
+            onChange={(e) => setBgFillMode(li, e.target.value as BgFillMode)}
+            style={selectStyle}>
+            <option value="continuous">continuous</option>
+            <option value="per-token">per-token</option>
+          </select>
+        </Field>
+      ))}
+      <p style={{ fontSize: 10, color: '#71717a', lineHeight: 1.5, margin: '10px 0 6px' }}>
+        Animation interpolates each token's x-position between <b style={{ color: '#a1a1aa' }}>State A</b> (rest)
+        and <b style={{ color: '#a1a1aa' }}>State B</b> (extended) and back. Each line picks its own
+        alignment per state — try `centered ↔ justified` for a stretching ribbon, or
+        `right ↔ left` for a swipe across.
+      </p>
       <div style={{ marginTop: 8, marginBottom: 4, fontSize: 10, color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.12em' }}>State A alignments</div>
       {c.lines.map((_, li) => (
         <Field key={`a-${li}`} label={`Line ${li + 1}`}>

@@ -14,7 +14,19 @@ export interface Line {
   tokens: Token[];
 }
 
-export type AlignmentMode = 'left' | 'right' | 'centered' | 'justified';
+export type AlignmentMode =
+  | 'left'
+  | 'right'
+  | 'centered'
+  | 'justified'
+  | 'stretched'         // each token grows in width (scaleX) to fill the line, no gaps
+  | 'gravity-left'      // tokens cluster at left, exponentially growing gaps toward right
+  | 'gravity-right'     // mirror of gravity-left
+  | 'hugging-edges'     // first/last at edges, middle clustered in centre
+  | 'scattered'         // deterministic random positions within the line (seeded)
+  | 'mirrored'          // tokens placed in reverse visual order
+  | 'offset-justified'  // justified but with quadratic-growing gaps
+  | 'exploded';         // fixed large gaps (overflow allowed)
 
 export type EasingMode =
   | 'linear'
@@ -26,6 +38,8 @@ export type EasingMode =
   | 'easeOutBack';
 
 export type DirectionMode = 'ping-pong' | 'one-way' | 'freeze-A' | 'freeze-B';
+
+export type BgFillMode = 'continuous' | 'per-token';
 
 export interface Composition {
   // Content
@@ -48,6 +62,12 @@ export interface Composition {
   stateA: { alignments: AlignmentMode[] };
   stateB: { alignments: AlignmentMode[] };
   edgePadding: number;
+  /**
+   * Per-line bg fill mode. One entry per line.
+   * 'continuous' = one rect per line, spans first→last token (gaps between tokens are filled).
+   * 'per-token'  = one rect per token, exactly its bounds (gaps reveal canvas bg).
+   */
+  bgBoundsModes: BgFillMode[];
   // Animation
   loopDuration: number;
   easing: EasingMode;
@@ -98,6 +118,7 @@ export const DEFAULT_COMPOSITION: Composition = {
   stateA: { alignments: ['centered', 'centered'] },
   stateB: { alignments: ['left', 'justified'] },
   edgePadding: 0,
+  bgBoundsModes: ['continuous', 'continuous'],
   loopDuration: 2.0,
   easing: 'easeInOut',
   direction: 'ping-pong',
@@ -128,7 +149,7 @@ interface Store {
 }
 
 const STORAGE_KEY = 'pulse:state';
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 3;
 
 export const useStore = create<Store>()(
   persist(
@@ -158,6 +179,42 @@ export const useStore = create<Store>()(
       version: SCHEMA_VERSION,
       // Only persist the composition; UI state is per-session.
       partialize: (s) => ({ composition: s.composition }) as StorageValue<Store>['state'],
+      // When the schema gains new fields, backfill them from defaults so older
+      // localStorage states don't crash with `undefined` reads.
+      migrate: (persisted, version) => {
+        if (version < 3) {
+          // Old shapes may carry `bgBoundsMode` (singular string, removed in v3)
+          // or no fill mode at all. Strip both forms; let DEFAULT_COMPOSITION
+          // provide the fresh `bgBoundsModes` array via the merge step below.
+          const p = (persisted as { composition?: Record<string, unknown> } | null) ?? {};
+          const old = p.composition ?? {};
+          const { bgBoundsMode: _drop, bgBoundsModes: _drop2, ...preserved } = old;
+          return {
+            composition: {
+              ...DEFAULT_COMPOSITION,
+              ...(preserved as Partial<Composition>),
+            },
+          } as StorageValue<Store>['state'];
+        }
+        return persisted as StorageValue<Store>['state'];
+      },
+      // Default merge in zustand is shallow — `{ ...current, ...persisted }` —
+      // which means a persisted composition without a new field overwrites the
+      // current composition entirely, leaving the new field undefined. We do a
+      // field-by-field merge for `composition` so missing fields fall back to
+      // the current defaults. This belt-and-suspenders the migrate step above.
+      merge: (persisted, current) => {
+        if (!persisted || typeof persisted !== 'object') return current;
+        const p = persisted as Partial<Store>;
+        return {
+          ...current,
+          ...p,
+          composition: {
+            ...current.composition,
+            ...(p.composition ?? {}),
+          },
+        };
+      },
     },
   ),
 );
