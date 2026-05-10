@@ -1,28 +1,35 @@
 /**
- * Atom — pure render of one Pulse composition for a given animation phase `t`.
+ * Atom — self-contained pulse animation. Owns its own RAF based on
+ * composition's loopDuration / direction / phaseOffset / useStateC.
  *
- * Takes a Composition (text, alignments, colors, all per-state config) and a
- * normalized phase value `t ∈ [0, 1]` from the parent. Drives no animation
- * itself. Used by the single-atom playground (Pulse) AND by the Stack prototype
- * which renders many atoms at once.
+ * Used by:
+ *   • Pulse (the single-atom playground) — passes raw composition.
+ *   • Stack — passes the same composition with a per-atom phaseOffset shift.
+ *
+ * `playing` controls whether the RAF advances time. When false, the
+ * current `tick` value freezes (so pause/resume keeps the moment).
  */
-import { useMemo, type CSSProperties } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { layoutLine, type TokenPosition, type TokenWidth } from './layout';
 import { useTokenWidths } from './tokens';
-import { characterEffect, easings, jitterFor, lerp, tokenProgress } from './animation';
+import { characterEffect, easingFn, jitterFor, lerp, tokenProgress } from './animation';
 import type { Composition } from './store';
 
 interface AtomProps {
   composition: Composition;
-  /** 0..1 phase. Caller decides direction/easing/loop. */
-  t: number;
+  /** RAF on/off. Defaults to true. */
+  playing?: boolean;
   /** Optional style overrides for the outer <svg>. */
   style?: CSSProperties;
   /** When true, debug overlays render (token bounds, line bounds, canvas grid). */
   debug?: boolean;
+  /** When set, RAF is bypassed and `t` is taken from this value (used for export). */
+  tOverride?: number | null;
+  /** DOM id added to the root <svg>. Used by export to locate the live element. */
+  svgId?: string;
 }
 
-export function Atom({ composition, t, style, debug = false }: AtomProps) {
+export function Atom({ composition, playing = true, style, debug = false, tOverride, svgId }: AtomProps) {
   const {
     lines, canvasWidth, canvasHeight,
     bgColor, blockColor, textColor,
@@ -31,13 +38,46 @@ export function Atom({ composition, t, style, debug = false }: AtomProps) {
     edgePadding, stateA, stateB, stateC, useStateC, bgBoundsModes,
     characterStaggerEnabled, characterStagger,
     characterEffect: charEffectMode, characterAmplitude,
-    easing, perTokenStagger, perLineOffset, bgLag,
+    easing, easingCurve,
+    loopDuration, direction, phaseOffset,
+    perTokenStagger, perLineOffset, bgLag,
     jitterX, jitterY, jitterSeed,
     showTokenBounds, showLineBounds, showCanvasGrid,
   } = composition;
 
   const letterSpacingPx = (fontSize * letterSpacingPct) / 100;
   const widths = useTokenWidths(lines, fontFamily, fontSize, letterSpacingPx);
+
+  // ----- Internal RAF ----- drives `t` from composition's own timing.
+  // When `tOverride` is provided, the RAF is bypassed (used for export).
+  const tickRef = useRef(0); // accumulated seconds across pause/resume
+  const [tInternal, setT] = useState(0);
+  const tFromOverride = tOverride !== null && tOverride !== undefined;
+  useEffect(() => {
+    if (tFromOverride) return;
+    if (!playing) return;
+    if (direction === 'freeze-A') { setT(0); return; }
+    if (direction === 'freeze-B') { setT(useStateC ? 1 / 3 : 1); return; }
+    let raf = 0;
+    const start = performance.now();
+    const initialOffset = tickRef.current;
+    const loop = (now: number) => {
+      const elapsed = initialOffset + (now - start) / 1000;
+      tickRef.current = elapsed;
+      const phase = (elapsed / Math.max(0.05, loopDuration) + phaseOffset) % 1;
+      let progress: number;
+      if (useStateC) progress = phase;
+      else if (direction === 'ping-pong') progress = phase < 0.5 ? phase * 2 : (1 - phase) * 2;
+      else progress = phase;
+      setT(progress);
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playing, loopDuration, phaseOffset, direction, useStateC, tFromOverride]);
+
+  const t = tFromOverride ? tOverride! : tInternal;
 
   // Pre-compute per-line layouts for each state (A, B, C).
   const layoutsABC = useMemo(() => {
@@ -61,7 +101,7 @@ export function Atom({ composition, t, style, debug = false }: AtomProps) {
     return layoutsABC.map(({ a, b, c }, li) => {
       let lineProgress = t;
       if (li > 0) lineProgress = ((t + perLineOffset) % 1 + 1) % 1;
-      const lineEase = easings[easing];
+      const lineEase = easingFn(easing, easingCurve);
       const totalTokens = a.length;
       const segments: Array<[TokenPosition[], TokenPosition[]]> = useStateC
         ? [[a, b], [b, c], [c, a]]
@@ -94,13 +134,14 @@ export function Atom({ composition, t, style, debug = false }: AtomProps) {
       const bgPositions = interp('bg').map(({ id, x, width }) => ({ id, x, width }));
       return { positions: tokens, bgPositions };
     });
-  }, [layoutsABC, t, easing, perTokenStagger, perLineOffset, bgLag,
+  }, [layoutsABC, t, easing, easingCurve, perTokenStagger, perLineOffset, bgLag,
       jitterX, jitterY, jitterSeed, useStateC]);
 
   const debugOn = debug && (showTokenBounds || showLineBounds || showCanvasGrid);
 
   return (
     <svg
+      id={svgId}
       viewBox={`0 0 ${canvasWidth} ${canvasHeight}`}
       preserveAspectRatio="xMidYMid meet"
       style={{ background: bgColor, display: 'block', width: '100%', height: '100%', ...style }}

@@ -28,14 +28,29 @@ export type AlignmentMode =
   | 'offset-justified'  // justified but with quadratic-growing gaps
   | 'exploded';         // fixed large gaps (overflow allowed)
 
+/**
+ * Full Penner easing set + custom cubic-bezier. Keys mirror easings.net naming.
+ * 'cubic-bezier' is special — pair it with `easingCurve` for the actual curve.
+ */
 export type EasingMode =
   | 'linear'
-  | 'easeIn'
-  | 'easeOut'
-  | 'easeInOut'
-  | 'easeOutCubic'
-  | 'easeOutQuart'
-  | 'easeOutBack';
+  | 'easeInSine' | 'easeOutSine' | 'easeInOutSine'
+  | 'easeInQuad' | 'easeOutQuad' | 'easeInOutQuad'
+  | 'easeInCubic' | 'easeOutCubic' | 'easeInOutCubic'
+  | 'easeInQuart' | 'easeOutQuart' | 'easeInOutQuart'
+  | 'easeInQuint' | 'easeOutQuint' | 'easeInOutQuint'
+  | 'easeInExpo' | 'easeOutExpo' | 'easeInOutExpo'
+  | 'easeInCirc' | 'easeOutCirc' | 'easeInOutCirc'
+  | 'easeInBack' | 'easeOutBack' | 'easeInOutBack'
+  | 'easeInElastic' | 'easeOutElastic' | 'easeInOutElastic'
+  | 'easeInBounce' | 'easeOutBounce' | 'easeInOutBounce'
+  | 'cubic-bezier'
+  // Legacy aliases for state migrated from earlier prototypes.
+  | 'easeIn' | 'easeOut' | 'easeInOut';
+
+export interface CubicBezierCurve {
+  x1: number; y1: number; x2: number; y2: number;
+}
 
 export type DirectionMode = 'ping-pong' | 'one-way' | 'freeze-A' | 'freeze-B';
 
@@ -76,6 +91,8 @@ export interface Composition {
   // Animation
   loopDuration: number;
   easing: EasingMode;
+  /** Bezier control points for `easing === 'cubic-bezier'` (else unused). */
+  easingCurve: CubicBezierCurve;
   direction: DirectionMode;
   phaseOffset: number;
   perTokenStagger: number;
@@ -132,7 +149,8 @@ export const DEFAULT_COMPOSITION: Composition = {
   edgePadding: 0,
   bgBoundsModes: ['continuous', 'continuous'],
   loopDuration: 2.0,
-  easing: 'easeInOut',
+  easing: 'easeInOutQuad',
+  easingCurve: { x1: 0.25, y1: 0.1, x2: 0.25, y2: 1 }, // CSS "ease"
   direction: 'ping-pong',
   phaseOffset: 0,
   perTokenStagger: 0,

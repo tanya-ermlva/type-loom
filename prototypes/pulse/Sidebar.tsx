@@ -1,10 +1,24 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { useStore } from './store';
-import type { AlignmentMode, BgFillMode, CharacterEffect, DirectionMode, EasingMode } from './store';
+import { useState } from 'react';
+import type { AlignmentMode, BgFillMode, CharacterEffect, CubicBezierCurve, DirectionMode, EasingMode } from './store';
+import { CurveEditor } from './CurveEditor';
+import { useExportContext } from './ExportContext';
+import { exportPngSequence } from './export';
 
 const EASING_OPTIONS: EasingMode[] = [
-  'linear', 'easeIn', 'easeOut', 'easeInOut',
-  'easeOutCubic', 'easeOutQuart', 'easeOutBack',
+  'linear',
+  'easeInSine',  'easeOutSine',  'easeInOutSine',
+  'easeInQuad',  'easeOutQuad',  'easeInOutQuad',
+  'easeInCubic', 'easeOutCubic', 'easeInOutCubic',
+  'easeInQuart', 'easeOutQuart', 'easeInOutQuart',
+  'easeInQuint', 'easeOutQuint', 'easeInOutQuint',
+  'easeInExpo',  'easeOutExpo',  'easeInOutExpo',
+  'easeInCirc',  'easeOutCirc',  'easeInOutCirc',
+  'easeInBack',  'easeOutBack',  'easeInOutBack',
+  'easeInElastic', 'easeOutElastic', 'easeInOutElastic',
+  'easeInBounce', 'easeOutBounce', 'easeInOutBounce',
+  'cubic-bezier',
 ];
 const DIRECTION_OPTIONS: DirectionMode[] = [
   'ping-pong', 'one-way', 'freeze-A', 'freeze-B',
@@ -22,6 +36,7 @@ export function Sidebar() {
       background: '#18181b', color: '#e4e4e7', overflowY: 'auto', fontSize: 12,
     }}>
       <PlaybackSection />
+      <ExportSection />
       <TypographySection />
       <LayoutSection />
       <AnimationCharacterSection />
@@ -60,6 +75,12 @@ function PlaybackSection() {
           {EASING_OPTIONS.map((m) => <option key={m} value={m}>{m}</option>)}
         </select>
       </Field>
+      {c.easing === 'cubic-bezier' && (
+        <div style={{ marginTop: 6, marginBottom: 8 }}>
+          <CurveEditor value={c.easingCurve}
+            onChange={(curve: CubicBezierCurve) => update({ easingCurve: curve })} />
+        </div>
+      )}
       <Field label="Direction">
         <select value={c.direction}
           onChange={(e) => update({ direction: e.target.value as DirectionMode })}
@@ -69,6 +90,56 @@ function PlaybackSection() {
       </Field>
       <Slider label="Phase off" value={c.phaseOffset} min={0} max={1} step={0.01}
         onChange={(v) => update({ phaseOffset: v })} format={(v) => v.toFixed(2)} />
+    </Section>
+  );
+}
+
+function ExportSection() {
+  const setPlaying = useStore((s) => s.setPlaying);
+  const loopDuration = useStore((s) => s.composition.loopDuration);
+  const ctx = useExportContext();
+  const [fps, setFps] = useState(30);
+  const [progress, setProgress] = useState<number | null>(null);
+
+  // One full loop = loopDuration seconds. Frames auto-derived.
+  const frames = Math.max(1, Math.round(loopDuration * fps));
+
+  const handleExport = async () => {
+    if (!ctx) return;
+    setPlaying(false);
+    setProgress(0);
+    try {
+      await exportPngSequence({
+        frames, fps, zipName: 'pulse-loop.zip',
+        prepareFrame: (f) => ctx.prepareFrame(f, fps),
+        getSvg: ctx.getSvg,
+        onProgress: (p) => setProgress(p),
+      });
+    } finally {
+      ctx.finishExport();
+      setProgress(null);
+    }
+  };
+
+  return (
+    <Section title="Export loop (PNG sequence)">
+      <Slider label="FPS" value={fps} min={10} max={60} step={1}
+        onChange={(v) => setFps(Math.round(v))} format={(v) => v.toFixed(0)} />
+      <p style={{ fontSize: 11, color: '#a1a1aa', margin: '4px 0 8px', fontFamily: 'ui-monospace, monospace' }}>
+        Loop = <b>{loopDuration.toFixed(1)}s</b> → <b>{frames} frames</b> @ {fps} FPS
+      </p>
+      <button onClick={handleExport} disabled={progress !== null}
+        style={{
+          width: '100%', padding: '6px', marginTop: 4,
+          background: progress !== null ? '#3f3f46' : '#27272a',
+          color: '#e4e4e7', border: 0, borderRadius: 4,
+          cursor: progress !== null ? 'wait' : 'pointer',
+        }}>
+        {progress !== null ? `Exporting… ${(progress * 100).toFixed(0)}%` : 'Export PNG loop'}
+      </button>
+      <p style={{ fontSize: 10, color: '#71717a', lineHeight: 1.4, margin: '6px 0 0' }}>
+        Captures one full loop (atom's loopDuration) as a seamless PNG sequence. Increase loop duration in Playback section for longer exports.
+      </p>
     </Section>
   );
 }
