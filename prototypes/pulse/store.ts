@@ -26,10 +26,31 @@ export type AlignmentMode =
   | 'gravity-left'      // tokens cluster at left, exponentially growing gaps toward right
   | 'gravity-right'     // mirror of gravity-left
   | 'hugging-edges'     // first/last at edges, middle clustered in centre
+  | 'split-left'        // edge-split, ceil-left: more tokens on left edge if odd N
+                        //   N=3 [A,B,C] → [A,B] left, [C] right; centre empty
+  | 'split-right'       // edge-split, floor-left: more tokens on right edge if odd N
+                        //   N=3 [A,B,C] → [A] left, [B,C] right; centre empty
+  | 'split-spread'      // edge-split + middle token's LETTERS spread across the gap
+                        //   N=3 [A,B,C] → [A] left, B's letters fill the gap, [C] right
+                        //   Even N: same as split-left (no middle to spread)
+                        //   N=1: single token spread edge-to-edge
   | 'scattered'         // deterministic random positions within the line (seeded)
   | 'mirrored'          // tokens placed in reverse visual order
   | 'offset-justified'  // justified but with quadratic-growing gaps
   | 'exploded';         // fixed large gaps (overflow allowed)
+
+/**
+ * Logical grouping of AlignmentMode values for the Sidebar dropdown UI.
+ * Renders as <optgroup> sections so the (now-13) options are scannable.
+ * Used by both Pulse and Stack sidebars.
+ */
+export const ALIGNMENT_GROUPS: { label: string; modes: AlignmentMode[] }[] = [
+  { label: 'Anchor',     modes: ['left', 'right', 'centered'] },
+  { label: 'Justify',    modes: ['justified', 'justified-chars', 'stretched'] },
+  { label: 'Edge-split', modes: ['hugging-edges', 'split-left', 'split-right', 'split-spread'] },
+  { label: 'Gravity',    modes: ['gravity-left', 'gravity-right', 'offset-justified'] },
+  { label: 'Special',    modes: ['scattered', 'mirrored', 'exploded'] },
+];
 
 /**
  * Full Penner easing set + custom cubic-bezier. Keys mirror easings.net naming.

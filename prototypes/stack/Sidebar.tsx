@@ -13,16 +13,23 @@
  */
 import { useState, type CSSProperties, type ReactNode } from 'react';
 import { useStore, SLOT_COUNT, type CanvasPreset } from './store';
-import { useStore as usePulseStore, type AlignmentMode, type CubicBezierCurve, type EasingMode } from '../pulse/store';
+import { useStore as usePulseStore, ALIGNMENT_GROUPS, type AlignmentMode, type CubicBezierCurve, type EasingMode } from '../pulse/store';
 import { CurveEditor } from '../pulse/CurveEditor';
 import { useExportContext } from '../pulse/ExportContext';
 import { exportPngSequence } from '../pulse/export';
 
-const ALIGNMENT_OPTIONS: AlignmentMode[] = [
-  'left', 'right', 'centered', 'justified', 'justified-chars',
-  'stretched', 'gravity-left', 'gravity-right', 'hugging-edges',
-  'scattered', 'mirrored', 'offset-justified', 'exploded',
-];
+/** Renders all alignment modes as <optgroup>-grouped <option>s — same UI as Pulse. */
+function AlignmentOptions() {
+  return (
+    <>
+      {ALIGNMENT_GROUPS.map((g) => (
+        <optgroup key={g.label} label={g.label}>
+          {g.modes.map((m) => <option key={m} value={m}>{m}</option>)}
+        </optgroup>
+      ))}
+    </>
+  );
+}
 
 const EASING_OPTIONS: EasingMode[] = [
   'linear',
@@ -320,7 +327,7 @@ function AlignmentOverridesSection() {
                         minWidth: 0,
                       }}>
                       <option value="__inherit__">inherit</option>
-                      {ALIGNMENT_OPTIONS.map((m) => <option key={m} value={m}>{m}</option>)}
+                      <AlignmentOptions />
                     </select>
                   );
                 })}

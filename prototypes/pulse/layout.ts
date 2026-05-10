@@ -50,6 +50,9 @@ export function layoutLine(
     case 'gravity-left':    return layoutGravity(tokens, opts, 'left');
     case 'gravity-right':   return layoutGravity(tokens, opts, 'right');
     case 'hugging-edges':   return layoutHugging(tokens, opts);
+    case 'split-left':      return layoutSplitEdges(tokens, opts, 'ceil-left');
+    case 'split-right':     return layoutSplitEdges(tokens, opts, 'floor-left');
+    case 'split-spread':    return layoutSplitSpread(tokens, opts);
     case 'scattered':       return layoutScattered(tokens, opts);
     case 'mirrored':        return layoutMirrored(tokens, opts);
     case 'offset-justified':return layoutOffsetJustified(tokens, opts);
@@ -198,6 +201,131 @@ function layoutGravity(
     }
   }
   return placed;
+}
+
+/**
+ * Split tokens into two groups packed at left and right edges, leaving the centre
+ * empty. For odd N, the extra token joins one side based on `bias`:
+ *   • 'ceil-left'  — left group gets ⌈N/2⌉ tokens (more on left)
+ *   • 'floor-left' — left group gets ⌊N/2⌋ tokens (more on right)
+ *
+ *   N=2: [A][B]                                (both biases identical)
+ *   N=3 ceil-left:  [A,B] left, [C] right
+ *   N=3 floor-left: [A] left, [B,C] right
+ *   N=4: [A,B] left, [C,D] right                (both biases identical)
+ *   N=5 ceil-left:  [A,B,C] left, [D,E] right
+ *   N=5 floor-left: [A,B] left, [C,D,E] right
+ *
+ * Each group uses tokenSpacingTight between its tokens. N=1 falls back to centred.
+ */
+function layoutSplitEdges(
+  tokens: TokenWidth[],
+  opts: LayoutOpts,
+  bias: 'ceil-left' | 'floor-left',
+): TokenPosition[] {
+  const N = tokens.length;
+  if (N === 1) return layoutPacked(tokens, 'centered', opts);
+  const leftCount = bias === 'ceil-left' ? Math.ceil(N / 2) : Math.floor(N / 2);
+  const leftTokens = tokens.slice(0, leftCount);
+  const rightTokens = tokens.slice(leftCount);
+  const positions: TokenPosition[] = new Array(N);
+  if (leftTokens.length > 0) {
+    const left = layoutPacked(leftTokens, 'left', opts);
+    for (let i = 0; i < leftTokens.length; i++) positions[i] = left[i];
+  }
+  if (rightTokens.length > 0) {
+    const right = layoutPacked(rightTokens, 'right', opts);
+    for (let i = 0; i < rightTokens.length; i++) positions[leftCount + i] = right[i];
+  }
+  return positions;
+}
+
+/**
+ * Edge-split (ceil-left) PLUS — for odd N — the middle token's letters track out
+ * to fill the gap between the left and right groups. For even N this is the same
+ * as `split-left`. For N=1 the single token's letters spread edge-to-edge (same
+ * effect as `justified-chars` for one token).
+ *
+ *   N=3 [A,B,C] → [A] left, B's letters fill the gap, [C] right
+ *   N=5 [A,B,C,D,E] → [A,B] left, C's letters fill the gap, [D,E] right
+ *
+ * Falls back to `split-left` when:
+ *   • the middle token lacks letterWidths (font not measured yet), OR
+ *   • the inner gap is non-positive (left + right groups already overlap).
+ */
+function layoutSplitSpread(tokens: TokenWidth[], opts: LayoutOpts): TokenPosition[] {
+  const N = tokens.length;
+  if (N === 0) return [];
+
+  // N=1: spread the single token edge-to-edge via letter-spacing override.
+  if (N === 1) {
+    const t = tokens[0];
+    if (!t.letterWidths || t.letterWidths.length < 2) return layoutPacked(tokens, 'centered', opts);
+    const inner = opts.canvasWidth - 2 * opts.edgePadding;
+    const ink = sum(t.letterWidths);
+    const gap = (inner - ink) / (t.letterWidths.length - 1);
+    return [{
+      id: t.id,
+      x: opts.edgePadding,
+      width: ink + (t.letterWidths.length - 1) * gap,
+      letterSpacingPx: gap,
+    }];
+  }
+
+  // Even N: no middle token to spread → identical to split-left.
+  if (N % 2 === 0) return layoutSplitEdges(tokens, opts, 'ceil-left');
+
+  const { canvasWidth, edgePadding, tokenSpacingTight } = opts;
+  const halfFloor = Math.floor(N / 2);
+  const leftTokens = tokens.slice(0, halfFloor);
+  const middleToken = tokens[halfFloor];
+  const rightTokens = tokens.slice(halfFloor + 1);
+
+  // Middle must have per-letter widths to spread; else fall back to a clean
+  // edge-split (no spread).
+  if (!middleToken.letterWidths || middleToken.letterWidths.length < 1) {
+    return layoutSplitEdges(tokens, opts, 'ceil-left');
+  }
+
+  const positions: TokenPosition[] = new Array(N);
+
+  // Left group at left edge.
+  let leftEnd = edgePadding;
+  if (leftTokens.length > 0) {
+    const left = layoutPacked(leftTokens, 'left', opts);
+    for (let i = 0; i < leftTokens.length; i++) positions[i] = left[i];
+    const last = left[left.length - 1];
+    leftEnd = last.x + last.width;
+  }
+
+  // Right group at right edge.
+  let rightStart = canvasWidth - edgePadding;
+  if (rightTokens.length > 0) {
+    const right = layoutPacked(rightTokens, 'right', opts);
+    for (let i = 0; i < rightTokens.length; i++) positions[halfFloor + 1 + i] = right[i];
+    rightStart = right[0].x;
+  }
+
+  // Inner gap: from after left group + spacing to before right group − spacing.
+  const innerStart = leftEnd + tokenSpacingTight;
+  const innerEnd = rightStart - tokenSpacingTight;
+  const innerSpan = innerEnd - innerStart;
+  if (innerSpan <= 0) {
+    // Edge groups overlap → no room to spread; fall back.
+    return layoutSplitEdges(tokens, opts, 'ceil-left');
+  }
+
+  const ink = sum(middleToken.letterWidths);
+  const charCount = middleToken.letterWidths.length;
+  const gap = charCount > 1 ? (innerSpan - ink) / (charCount - 1) : 0;
+  positions[halfFloor] = {
+    id: middleToken.id,
+    x: innerStart,
+    width: ink + Math.max(0, charCount - 1) * gap,
+    letterSpacingPx: gap,
+  };
+
+  return positions;
 }
 
 /** First/last tokens prabbed at edges, middle tokens packed tight in the centre. */

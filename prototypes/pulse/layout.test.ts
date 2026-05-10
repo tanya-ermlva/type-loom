@@ -84,6 +84,127 @@ describe('layoutLine', () => {
     ]);
   });
 
+  // ---------- split-left / split-right / split-spread ----------
+
+  it('split-left: N=2 puts a left, b right', () => {
+    const tokens = [w('a', 100), w('b', 100)];
+    const positions = layoutLine(tokens, 'split-left', {
+      canvasWidth: 1000, edgePadding: 0, tokenSpacingTight: 20,
+    });
+    // left [a]: a at 0. right [b]: b at 1000-100 = 900.
+    expect(positions).toEqual([
+      { id: 'a', x: 0,   width: 100 },
+      { id: 'b', x: 900, width: 100 },
+    ]);
+  });
+
+  it('split-left: N=3 puts 2 left + 1 right (ceil-left)', () => {
+    const tokens = [w('a', 100), w('b', 100), w('c', 100)];
+    const positions = layoutLine(tokens, 'split-left', {
+      canvasWidth: 1000, edgePadding: 0, tokenSpacingTight: 20,
+    });
+    // left [a, b]: contentW = 100+20+100 = 220, packed left → a@0, b@120.
+    // right [c]: c at 1000-100 = 900.
+    expect(positions).toEqual([
+      { id: 'a', x: 0,   width: 100 },
+      { id: 'b', x: 120, width: 100 },
+      { id: 'c', x: 900, width: 100 },
+    ]);
+  });
+
+  it('split-left: N=4 splits 2 left + 2 right (same as split-right when even)', () => {
+    const tokens = [w('a', 100), w('b', 100), w('c', 100), w('d', 100)];
+    const opts = { canvasWidth: 1000, edgePadding: 0, tokenSpacingTight: 20 };
+    const left = layoutLine(tokens, 'split-left', opts);
+    const right = layoutLine(tokens, 'split-right', opts);
+    // [a,b] left: a@0, b@120. [c,d] right: contentW=220, startX=780. c@780, d@900.
+    const expected = [
+      { id: 'a', x: 0,   width: 100 },
+      { id: 'b', x: 120, width: 100 },
+      { id: 'c', x: 780, width: 100 },
+      { id: 'd', x: 900, width: 100 },
+    ];
+    expect(left).toEqual(expected);
+    expect(right).toEqual(expected);
+  });
+
+  it('split-right: N=3 puts 1 left + 2 right (floor-left)', () => {
+    const tokens = [w('a', 100), w('b', 100), w('c', 100)];
+    const positions = layoutLine(tokens, 'split-right', {
+      canvasWidth: 1000, edgePadding: 0, tokenSpacingTight: 20,
+    });
+    // left [a]: a at 0. right [b, c]: contentW = 220, startX = 780.
+    //   b at 780, c at 900.
+    expect(positions).toEqual([
+      { id: 'a', x: 0,   width: 100 },
+      { id: 'b', x: 780, width: 100 },
+      { id: 'c', x: 900, width: 100 },
+    ]);
+  });
+
+  it('split-left/right: N=1 falls back to centred', () => {
+    const tokens = [w('a', 100)];
+    const opts = { canvasWidth: 1000, edgePadding: 0, tokenSpacingTight: 0 };
+    const expected = [{ id: 'a', x: 450, width: 100 }];
+    expect(layoutLine(tokens, 'split-left', opts)).toEqual(expected);
+    expect(layoutLine(tokens, 'split-right', opts)).toEqual(expected);
+  });
+
+  it('split-spread: N=3 fills gap with middle token letter-spacing', () => {
+    const tokens = [
+      { id: 'a', width: 100, letterWidths: [100] },
+      { id: 'b', width: 90,  letterWidths: [30, 30, 30] },
+      { id: 'c', width: 100, letterWidths: [100] },
+    ];
+    const positions = layoutLine(tokens, 'split-spread', {
+      canvasWidth: 1000, edgePadding: 0, tokenSpacingTight: 20,
+    });
+    // a left: 0..100. c right: 900..1000.
+    // innerStart = 100 + 20 = 120. innerEnd = 900 - 20 = 880. span = 760.
+    // b ink = 90, charCount = 3 → gap = (760 - 90)/2 = 335.
+    // b.width = 90 + 2*335 = 760.
+    expect(positions).toEqual([
+      { id: 'a', x: 0,   width: 100 },
+      { id: 'b', x: 120, width: 760, letterSpacingPx: 335 },
+      { id: 'c', x: 900, width: 100 },
+    ]);
+  });
+
+  it('split-spread: N=4 (even) is identical to split-left', () => {
+    const tokens = [
+      { id: 'a', width: 100, letterWidths: [100] },
+      { id: 'b', width: 100, letterWidths: [100] },
+      { id: 'c', width: 100, letterWidths: [100] },
+      { id: 'd', width: 100, letterWidths: [100] },
+    ];
+    const opts = { canvasWidth: 1000, edgePadding: 0, tokenSpacingTight: 20 };
+    expect(layoutLine(tokens, 'split-spread', opts))
+      .toEqual(layoutLine(tokens, 'split-left', opts));
+  });
+
+  it('split-spread: N=1 spreads single token edge-to-edge', () => {
+    const tokens = [{ id: 'a', width: 120, letterWidths: [40, 40, 40] }];
+    const positions = layoutLine(tokens, 'split-spread', {
+      canvasWidth: 1000, edgePadding: 0, tokenSpacingTight: 0,
+    });
+    // ink = 120, charCount = 3, gap = (1000 - 120)/2 = 440.
+    // width = 120 + 2*440 = 1000.
+    expect(positions).toEqual([
+      { id: 'a', x: 0, width: 1000, letterSpacingPx: 440 },
+    ]);
+  });
+
+  it('split-spread: missing middle letterWidths falls back to split-left', () => {
+    const tokens = [
+      { id: 'a', width: 100 },
+      { id: 'b', width: 100 },  // no letterWidths
+      { id: 'c', width: 100 },
+    ];
+    const opts = { canvasWidth: 1000, edgePadding: 0, tokenSpacingTight: 20 };
+    expect(layoutLine(tokens, 'split-spread', opts))
+      .toEqual(layoutLine(tokens, 'split-left', opts));
+  });
+
   // ---------- justified-chars ----------
 
   it('justified-chars: every character has equal gap (intra and inter token)', () => {

@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react';
-import { useStore } from './store';
+import { useStore, ALIGNMENT_GROUPS } from './store';
 import { useState } from 'react';
 import type { AlignmentMode, BgFillMode, CharacterEffect, CubicBezierCurve, DirectionMode, EasingMode } from './store';
 import { CurveEditor } from './CurveEditor';
@@ -23,11 +23,19 @@ const EASING_OPTIONS: EasingMode[] = [
 const DIRECTION_OPTIONS: DirectionMode[] = [
   'ping-pong', 'one-way', 'freeze-A', 'freeze-B',
 ];
-const ALIGNMENT_OPTIONS: AlignmentMode[] = [
-  'left', 'right', 'centered', 'justified', 'justified-chars',
-  'stretched', 'gravity-left', 'gravity-right', 'hugging-edges',
-  'scattered', 'mirrored', 'offset-justified', 'exploded',
-];
+
+/** Renders all alignment modes as <optgroup>-grouped <option>s. */
+function AlignmentOptions() {
+  return (
+    <>
+      {ALIGNMENT_GROUPS.map((g) => (
+        <optgroup key={g.label} label={g.label}>
+          {g.modes.map((m) => <option key={m} value={m}>{m}</option>)}
+        </optgroup>
+      ))}
+    </>
+  );
+}
 
 export function Sidebar() {
   return (
@@ -209,7 +217,7 @@ function LayoutSection() {
           <select value={c.stateA.alignments[li] ?? 'centered'}
             onChange={(e) => setStateAlignment('stateA', li, e.target.value as AlignmentMode)}
             style={selectStyle}>
-            {ALIGNMENT_OPTIONS.map((m) => <option key={m} value={m}>{m}</option>)}
+            <AlignmentOptions />
           </select>
         </Field>
       ))}
@@ -219,7 +227,7 @@ function LayoutSection() {
           <select value={c.stateB.alignments[li] ?? 'centered'}
             onChange={(e) => setStateAlignment('stateB', li, e.target.value as AlignmentMode)}
             style={selectStyle}>
-            {ALIGNMENT_OPTIONS.map((m) => <option key={m} value={m}>{m}</option>)}
+            <AlignmentOptions />
           </select>
         </Field>
       ))}
@@ -239,7 +247,7 @@ function LayoutSection() {
               <select value={c.stateC?.alignments[li] ?? 'centered'}
                 onChange={(e) => setStateAlignment('stateC', li, e.target.value as AlignmentMode)}
                 style={selectStyle}>
-                {ALIGNMENT_OPTIONS.map((m) => <option key={m} value={m}>{m}</option>)}
+                <AlignmentOptions />
               </select>
             </Field>
           ))}
