@@ -14,11 +14,22 @@
  */
 import { create } from 'zustand';
 import { persist, type StorageValue } from 'zustand/middleware';
-import type { CubicBezierCurve, EasingMode } from '../pulse/store';
+import type { AlignmentMode, CubicBezierCurve, EasingMode } from '../pulse/store';
 
 export interface AtomColor {
   blockColor: string;
   textColor: string;
+}
+
+/**
+ * Per-atom override of state alignments. Any field left undefined inherits
+ * the corresponding value from Pulse's composition. Per-line entries inside
+ * each array can also be `null` to inherit just that one line.
+ */
+export interface AtomAlignmentOverride {
+  stateA?: (AlignmentMode | null)[];
+  stateB?: (AlignmentMode | null)[];
+  stateC?: (AlignmentMode | null)[];
 }
 
 export const DEFAULT_PALETTE: AtomColor[] = [
@@ -60,6 +71,8 @@ export interface StackState {
   atomCount: number;
   /** Per-atom colours. */
   atomPalette: AtomColor[];
+  /** Per-atom alignment overrides. Empty/missing entry = inherit Pulse's values. */
+  atomAlignmentOverrides: AtomAlignmentOverride[];
   /**
    * How per-atom phase offsets are derived:
    *   • 'step'   — fixed delta between adjacent atoms (atoms add to total spread as count grows).
@@ -81,6 +94,7 @@ export const DEFAULT_STACK_STATE: StackState = {
   scrollEnabled: true,
   atomCount: 4,
   atomPalette: DEFAULT_PALETTE,
+  atomAlignmentOverrides: [{}, {}, {}, {}],
   phaseMode: 'step',
   phaseStep: 0.02,    // 2 % per atom (in 'step' mode)
   phaseSpread: 0.06,  // 6 % total cascade (in 'spread' mode)
@@ -95,6 +109,10 @@ interface Store extends StackState {
   setScrollEnabled: (v: boolean) => void;
   setAtomCount: (v: number) => void;
   setAtomColor: (idx: number, color: Partial<AtomColor>) => void;
+  /** Set one cell of one atom's per-state per-line alignment override. Pass null to inherit. */
+  setAtomAlignment: (atomIdx: number, state: 'stateA' | 'stateB' | 'stateC',
+                     lineIdx: number, mode: AlignmentMode | null) => void;
+  resetAtomAlignments: (atomIdx: number) => void;
   setPhaseStep: (v: number) => void;
   setPhaseMode: (v: 'step' | 'spread') => void;
   setPhaseSpread: (v: number) => void;
@@ -122,6 +140,26 @@ export const useStore = create<Store>()(
           next[idx] = { ...next[idx], ...color };
           return { atomPalette: next };
         }),
+      setAtomAlignment: (atomIdx, state, lineIdx, mode) =>
+        set((s) => {
+          const overrides = s.atomAlignmentOverrides.slice();
+          // Pad if atomIdx is beyond current length.
+          while (overrides.length <= atomIdx) overrides.push({});
+          const cur = overrides[atomIdx] ?? {};
+          const arr = (cur[state] ?? []).slice() as (AlignmentMode | null)[];
+          while (arr.length <= lineIdx) arr.push(null);
+          arr[lineIdx] = mode;
+          // If all entries are null, drop the array (back to fully inherit for this state).
+          const clean = arr.every((v) => v === null) ? undefined : arr;
+          overrides[atomIdx] = { ...cur, [state]: clean };
+          return { atomAlignmentOverrides: overrides };
+        }),
+      resetAtomAlignments: (atomIdx) =>
+        set((s) => {
+          const overrides = s.atomAlignmentOverrides.slice();
+          overrides[atomIdx] = {};
+          return { atomAlignmentOverrides: overrides };
+        }),
       setPhaseStep: (phaseStep) => set({ phaseStep: Math.max(0, Math.min(1, phaseStep)) }),
       setPhaseMode: (phaseMode) => set({ phaseMode }),
       setPhaseSpread: (phaseSpread) => set({ phaseSpread: Math.max(0, Math.min(1, phaseSpread)) }),
@@ -140,6 +178,7 @@ export const useStore = create<Store>()(
           scrollEnabled: s.scrollEnabled,
           atomCount: s.atomCount,
           atomPalette: s.atomPalette,
+          atomAlignmentOverrides: s.atomAlignmentOverrides,
           phaseMode: s.phaseMode,
           phaseStep: s.phaseStep,
           phaseSpread: s.phaseSpread,

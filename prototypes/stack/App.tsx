@@ -22,7 +22,7 @@ export default function App() {
   const baseComposition = usePulseStore((s) => s.composition);
   const {
     cycleDuration, pulsesPerScroll, scrollEasing, scrollEasingCurve, playing, scrollEnabled,
-    atomCount, atomPalette, phaseMode, phaseStep, phaseSpread,
+    atomCount, atomPalette, atomAlignmentOverrides, phaseMode, phaseStep, phaseSpread,
   } = useStackStore();
   // Stack canvas is always 4 atoms tall — derived from the live atom dimensions.
   // Changing canvas size in Pulse auto-resizes Stack.
@@ -46,6 +46,18 @@ export default function App() {
       if (atomCount <= 1) return 0;
       return (i / (atomCount - 1)) * phaseSpread;
     };
+    // Merge per-atom alignment overrides on top of Pulse's per-state alignment.
+    const mergeAlignments = (
+      base: typeof baseComposition.stateA,
+      override: ReturnType<typeof getOverrideArr>,
+    ) => {
+      if (!override) return base;
+      const merged = base.alignments.map((m, li) => override[li] ?? m);
+      return { alignments: merged };
+    };
+    const getOverrideArr = (i: number, state: 'stateA' | 'stateB' | 'stateC') =>
+      atomAlignmentOverrides[i]?.[state];
+
     return Array.from({ length: atomCount }, (_, i) => {
       const palette = atomPalette[i % Math.max(1, atomPalette.length)] ?? atomPalette[0];
       // Reuse baseComposition.lines BY REFERENCE — same token IDs across atoms
@@ -56,9 +68,13 @@ export default function App() {
         textColor: palette?.textColor ?? baseComposition.textColor,
         loopDuration: atomLoopDurationInStack,
         phaseOffset: (((baseComposition.phaseOffset ?? 0) + stepFromMode(i)) % 1 + 1) % 1,
+        stateA: mergeAlignments(baseComposition.stateA, getOverrideArr(i, 'stateA')),
+        stateB: mergeAlignments(baseComposition.stateB, getOverrideArr(i, 'stateB')),
+        stateC: mergeAlignments(baseComposition.stateC, getOverrideArr(i, 'stateC')),
       };
     });
-  }, [baseComposition, atomCount, atomPalette, phaseMode, phaseStep, phaseSpread, atomLoopDurationInStack]);
+  }, [baseComposition, atomCount, atomPalette, atomAlignmentOverrides,
+      phaseMode, phaseStep, phaseSpread, atomLoopDurationInStack]);
 
   // Measure widths ONCE for the shared lines/font params; pass to every atom so
   // cycle-wrap (slot composition swap) doesn't trigger a per-atom re-measure.

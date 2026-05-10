@@ -10,10 +10,16 @@
  */
 import { useState, type CSSProperties, type ReactNode } from 'react';
 import { useStore } from './store';
-import type { CubicBezierCurve, EasingMode } from '../pulse/store';
+import { useStore as usePulseStore, type AlignmentMode, type CubicBezierCurve, type EasingMode } from '../pulse/store';
 import { CurveEditor } from '../pulse/CurveEditor';
 import { useExportContext } from '../pulse/ExportContext';
 import { exportPngSequence } from '../pulse/export';
+
+const ALIGNMENT_OPTIONS: AlignmentMode[] = [
+  'left', 'right', 'centered', 'justified',
+  'stretched', 'gravity-left', 'gravity-right', 'hugging-edges',
+  'scattered', 'mirrored', 'offset-justified', 'exploded',
+];
 
 const EASING_OPTIONS: EasingMode[] = [
   'linear',
@@ -39,6 +45,7 @@ export function Sidebar() {
       <NoteSection />
       <ScrollSection />
       <AtomsSection />
+      <AlignmentOverridesSection />
       <ExportSection />
     </aside>
   );
@@ -178,6 +185,81 @@ function AtomsSection() {
             onChange={(v) => setAtomColor(i, { textColor: v })} />
         </div>
       ))}
+    </Section>
+  );
+}
+
+function AlignmentOverridesSection() {
+  const atomCount = useStore((s) => s.atomCount);
+  const overrides = useStore((s) => s.atomAlignmentOverrides);
+  const setAtomAlignment = useStore((s) => s.setAtomAlignment);
+  const resetAtomAlignments = useStore((s) => s.resetAtomAlignments);
+  const useStateC = usePulseStore((s) => s.composition.useStateC);
+  const lineCount = usePulseStore((s) => s.composition.lines.length);
+
+  const states: Array<{ key: 'stateA' | 'stateB' | 'stateC'; label: string }> = [
+    { key: 'stateA', label: 'A' },
+    { key: 'stateB', label: 'B' },
+    ...(useStateC ? [{ key: 'stateC' as const, label: 'C' }] : []),
+  ];
+
+  return (
+    <Section title="Alignment overrides">
+      <p style={{ fontSize: 10, color: '#71717a', lineHeight: 1.4, margin: '0 0 10px' }}>
+        Override per-atom per-line alignment. Leave on <b>inherit</b> to use the value from{' '}
+        <a href="../pulse/" style={{ color: '#60a5fa' }}>Atom</a>.
+      </p>
+      {Array.from({ length: atomCount }, (_, atomIdx) => {
+        const ovr = overrides[atomIdx] ?? {};
+        const hasAny = !!(ovr.stateA || ovr.stateB || ovr.stateC);
+        return (
+          <div key={`atom-${atomIdx}`} style={{
+            border: '1px solid #27272a', borderRadius: 4, padding: 8, marginBottom: 8,
+          }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              marginBottom: 6, fontSize: 10, color: '#a1a1aa',
+              textTransform: 'uppercase', letterSpacing: '0.12em',
+            }}>
+              <span>Atom {atomIdx + 1}</span>
+              {hasAny && (
+                <button onClick={() => resetAtomAlignments(atomIdx)}
+                  style={{
+                    background: 'transparent', border: 0, color: '#71717a',
+                    fontSize: 10, cursor: 'pointer', padding: 0,
+                  }}
+                  title="Reset all overrides for this atom">reset</button>
+              )}
+            </div>
+            {states.map(({ key, label }) => (
+              <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                <span style={{ width: 18, fontSize: 11, color: '#a1a1aa', fontWeight: 600 }}>{label}</span>
+                {Array.from({ length: lineCount }, (_, li) => {
+                  const cur = ovr[key]?.[li] ?? null;
+                  return (
+                    <select key={li} value={cur ?? '__inherit__'}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setAtomAlignment(atomIdx, key, li,
+                          v === '__inherit__' ? null : (v as AlignmentMode));
+                      }}
+                      style={{
+                        flex: 1, fontSize: 10,
+                        background: cur ? '#1e293b' : '#0a0a0a',
+                        color: cur ? '#e4e4e7' : '#71717a',
+                        border: '1px solid #3f3f46', borderRadius: 3, padding: '2px 4px',
+                        minWidth: 0,
+                      }}>
+                      <option value="__inherit__">inherit</option>
+                      {ALIGNMENT_OPTIONS.map((m) => <option key={m} value={m}>{m}</option>)}
+                    </select>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        );
+      })}
     </Section>
   );
 }
