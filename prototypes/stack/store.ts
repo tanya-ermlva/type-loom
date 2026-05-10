@@ -1,13 +1,21 @@
 /**
- * Stack store — Phase 1.5.
+ * Stack store — Phase 1.5+ (canvas-driven sizing).
  *
  * Holds ONLY stack-level concerns:
- *   • canvas size + cycle timing + scroll easing + play/pause
- *   • atom count + per-atom colour palette
+ *   • stack canvas size + cycle timing + scroll easing + play/pause
+ *   • per-atom colour palette (4 slots, atoms cycle through them)
+ *   • per-atom alignment overrides (4 slots, atoms cycle)
  *
  * The actual atom Composition (alignments, character effects, font, etc.)
  * comes live from the Pulse store. Each atom in the stack is the same
- * composition with a different colour and a different phase offset (i / N).
+ * composition with a different colour and a different phase offset.
+ *
+ * Atom display dimensions are NO LONGER stored — they're derived per-frame in
+ * Stack App.tsx as: atomDisplayWidth = stackCanvasWidth (always fills width);
+ * atomDisplayHeight = stackCanvasWidth × (atomCanvasH / atomCanvasW) — i.e.
+ * the atom's design aspect is preserved. Atom count = floor(stackCanvasHeight
+ * / atomDisplayHeight). So a tall (portrait) stack canvas naturally tiles
+ * many atoms vertically; a wider canvas tiles fewer.
  *
  * Persisted to localStorage under `stack:state`. Custom merge backfills any
  * missing fields from defaults so future schema extensions don't crash.
@@ -40,11 +48,42 @@ export const DEFAULT_PALETTE: AtomColor[] = [
 ];
 
 /**
- * Stack canvas is no longer stored — it's derived from the atom in Stack App
- * (always atom.canvasWidth × atom.canvasHeight × 4). Changing atom dimensions
- * in Pulse automatically resizes the Stack canvas.
+ * Number of palette/alignment-override slots. Atoms beyond this index cycle
+ * back: atom N picks slot N % SLOT_COUNT. Keeps the override UI manageable
+ * even when a tall canvas yields many atoms.
  */
+export const SLOT_COUNT = 4;
+
+/** Canvas preset choices. 'custom' uses the W/H values stored in state directly. */
+export type CanvasPreset =
+  | 'wide'           // 1920 × 1080 (16:9, current default — 4 atoms tall at 1920×270)
+  | 'square'         // 1080 × 1080
+  | 'portrait-3-4'   // 1080 × 1440
+  | 'a4-portrait'    // 1240 × 1754 (~A4 at ~150dpi)
+  | 'a4-landscape'   // 1754 × 1240
+  | 'a3-portrait'    // 1748 × 2480 (~A3 at ~150dpi)
+  | 'a3-landscape'   // 2480 × 1748
+  | 'custom';        // user-set W and H (sliders)
+
+export const CANVAS_PRESETS: Record<Exclude<CanvasPreset, 'custom'>, { width: number; height: number }> = {
+  'wide':          { width: 1920, height: 1080 },
+  'square':        { width: 1080, height: 1080 },
+  'portrait-3-4':  { width: 1080, height: 1440 },
+  'a4-portrait':   { width: 1240, height: 1754 },
+  'a4-landscape':  { width: 1754, height: 1240 },
+  'a3-portrait':   { width: 1748, height: 2480 },
+  'a3-landscape':  { width: 2480, height: 1748 },
+};
+
 export interface StackState {
+  /** Selected canvas proportion preset. 'custom' means use stackCanvas{Width,Height} as-is. */
+  canvasPreset: CanvasPreset;
+  /**
+   * Stack canvas dimensions. Mirror the active preset, OR are user-controlled
+   * when preset === 'custom'. Persisted so a custom canvas survives reloads.
+   */
+  stackCanvasWidth: number;
+  stackCanvasHeight: number;
   /**
    * Total scroll cycle in seconds — primary timing knob. Defines how often the
    * canvas snaps up by one atomHeight, which is the visible rhythm of the stack.
@@ -67,11 +106,14 @@ export interface StackState {
    * pulse horizontally (governed by `playing`) but the canvas stops snapping.
    */
   scrollEnabled: boolean;
-  /** Number of distinct atom slots in the cycle. Atoms repeat the palette if count > palette.length. */
-  atomCount: number;
-  /** Per-atom colours. */
+  /**
+   * Per-atom colours. Always SLOT_COUNT entries; atoms cycle through them.
+   */
   atomPalette: AtomColor[];
-  /** Per-atom alignment overrides. Empty/missing entry = inherit Pulse's values. */
+  /**
+   * Per-atom alignment overrides. Always SLOT_COUNT entries; atoms cycle.
+   * Empty `{}` entry = atom inherits all alignments from Pulse for that slot.
+   */
   atomAlignmentOverrides: AtomAlignmentOverride[];
   /**
    * How per-atom phase offsets are derived:
@@ -86,13 +128,15 @@ export interface StackState {
 }
 
 export const DEFAULT_STACK_STATE: StackState = {
+  canvasPreset: 'wide',
+  stackCanvasWidth: CANVAS_PRESETS.wide.width,
+  stackCanvasHeight: CANVAS_PRESETS.wide.height,
   cycleDuration: 3.0,            // 3-second scroll cycle
   pulsesPerScroll: 1,            // 1 atom pulse per scroll step (atom = 3s in Stack)
   scrollEasing: 'easeOutQuart',
   scrollEasingCurve: { x1: 0.25, y1: 0.1, x2: 0.25, y2: 1 },
   playing: true,
   scrollEnabled: true,
-  atomCount: 4,
   atomPalette: DEFAULT_PALETTE,
   atomAlignmentOverrides: [{}, {}, {}, {}],
   phaseMode: 'step',
@@ -101,13 +145,15 @@ export const DEFAULT_STACK_STATE: StackState = {
 };
 
 interface Store extends StackState {
+  setCanvasPreset: (p: CanvasPreset) => void;
+  /** Set custom W/H. Implicitly switches preset to 'custom'. */
+  setCustomCanvas: (w: number, h: number) => void;
   setCycleDuration: (v: number) => void;
   setPulsesPerScroll: (v: number) => void;
   setScrollEasing: (v: EasingMode) => void;
   setScrollEasingCurve: (curve: CubicBezierCurve) => void;
   setPlaying: (v: boolean) => void;
   setScrollEnabled: (v: boolean) => void;
-  setAtomCount: (v: number) => void;
   setAtomColor: (idx: number, color: Partial<AtomColor>) => void;
   /** Set one cell of one atom's per-state per-line alignment override. Pass null to inherit. */
   setAtomAlignment: (atomIdx: number, state: 'stateA' | 'stateB' | 'stateC',
@@ -120,12 +166,26 @@ interface Store extends StackState {
 }
 
 const STORAGE_KEY = 'stack:state';
-const SCHEMA_VERSION = 1;
+// v2: dropped `atomCount` (now derived from canvas + atom aspect),
+//     added `canvasPreset` + `stackCanvasWidth/Height`,
+//     palette + alignment overrides fixed to SLOT_COUNT (4) entries.
+const SCHEMA_VERSION = 2;
 
 export const useStore = create<Store>()(
   persist(
     (set) => ({
       ...DEFAULT_STACK_STATE,
+      setCanvasPreset: (canvasPreset) =>
+        set(() => {
+          if (canvasPreset === 'custom') return { canvasPreset };
+          const dims = CANVAS_PRESETS[canvasPreset];
+          return { canvasPreset, stackCanvasWidth: dims.width, stackCanvasHeight: dims.height };
+        }),
+      setCustomCanvas: (w, h) => set({
+        canvasPreset: 'custom',
+        stackCanvasWidth: Math.max(200, Math.min(8000, Math.round(w))),
+        stackCanvasHeight: Math.max(200, Math.min(8000, Math.round(h))),
+      }),
       setCycleDuration: (cycleDuration) => set({ cycleDuration: Math.max(0.3, Math.min(15, cycleDuration)) }),
       setPulsesPerScroll: (pulsesPerScroll) =>
         set({ pulsesPerScroll: Math.max(1, Math.min(8, Math.round(pulsesPerScroll))) }),
@@ -133,7 +193,6 @@ export const useStore = create<Store>()(
       setScrollEasingCurve: (scrollEasingCurve) => set({ scrollEasingCurve }),
       setPlaying: (playing) => set({ playing }),
       setScrollEnabled: (scrollEnabled) => set({ scrollEnabled }),
-      setAtomCount: (atomCount) => set({ atomCount: Math.max(1, Math.min(4, Math.round(atomCount))) }),
       setAtomColor: (idx, color) =>
         set((s) => {
           const next = s.atomPalette.slice();
@@ -143,7 +202,6 @@ export const useStore = create<Store>()(
       setAtomAlignment: (atomIdx, state, lineIdx, mode) =>
         set((s) => {
           const overrides = s.atomAlignmentOverrides.slice();
-          // Pad if atomIdx is beyond current length.
           while (overrides.length <= atomIdx) overrides.push({});
           const cur = overrides[atomIdx] ?? {};
           const arr = (cur[state] ?? []).slice() as (AlignmentMode | null)[];
@@ -170,23 +228,53 @@ export const useStore = create<Store>()(
       version: SCHEMA_VERSION,
       partialize: (s) =>
         ({
+          canvasPreset: s.canvasPreset,
+          stackCanvasWidth: s.stackCanvasWidth,
+          stackCanvasHeight: s.stackCanvasHeight,
           cycleDuration: s.cycleDuration,
           pulsesPerScroll: s.pulsesPerScroll,
           scrollEasing: s.scrollEasing,
           scrollEasingCurve: s.scrollEasingCurve,
           playing: s.playing,
           scrollEnabled: s.scrollEnabled,
-          atomCount: s.atomCount,
           atomPalette: s.atomPalette,
           atomAlignmentOverrides: s.atomAlignmentOverrides,
           phaseMode: s.phaseMode,
           phaseStep: s.phaseStep,
           phaseSpread: s.phaseSpread,
         }) as StorageValue<Store>['state'],
+      // v1 → v2: drop atomCount (now derived); backfill the new canvas fields
+      // from defaults so older states load cleanly. Field-by-field merge below
+      // handles any other missing keys.
+      migrate: (persisted, version) => {
+        let p = persisted as Record<string, unknown> | null;
+        if (version < 2 && p) {
+          const { atomCount: _drop, ...preserved } = p;
+          p = {
+            ...DEFAULT_STACK_STATE,
+            ...preserved,
+          } as Record<string, unknown>;
+        }
+        return p as unknown as StorageValue<Store>['state'];
+      },
       // Field-by-field merge: missing keys fall back to current (DEFAULT_STACK_STATE).
+      // Trim palette + overrides to SLOT_COUNT in case persisted state had more.
       merge: (persisted, current) => {
         if (!persisted || typeof persisted !== 'object') return current;
-        return { ...current, ...(persisted as Partial<Store>) };
+        const p = persisted as Partial<Store>;
+        const merged = { ...current, ...p };
+        if (merged.atomPalette && merged.atomPalette.length !== SLOT_COUNT) {
+          // Pad with defaults if short, trim if long.
+          const next = merged.atomPalette.slice(0, SLOT_COUNT);
+          while (next.length < SLOT_COUNT) next.push(DEFAULT_PALETTE[next.length] ?? DEFAULT_PALETTE[0]);
+          merged.atomPalette = next;
+        }
+        if (merged.atomAlignmentOverrides && merged.atomAlignmentOverrides.length !== SLOT_COUNT) {
+          const next = merged.atomAlignmentOverrides.slice(0, SLOT_COUNT);
+          while (next.length < SLOT_COUNT) next.push({});
+          merged.atomAlignmentOverrides = next;
+        }
+        return merged;
       },
     },
   ),

@@ -4,7 +4,7 @@ import { PrototypeNav } from '../pulse/PrototypeNav';
 import { easingFn } from '../pulse/animation';
 import { useStore as usePulseStore, type Composition } from '../pulse/store';
 import { useTokenWidths } from '../pulse/tokens';
-import { useStore as useStackStore } from './store';
+import { useStore as useStackStore, SLOT_COUNT } from './store';
 import { Sidebar } from './Sidebar';
 import { ExportContext } from '../pulse/ExportContext';
 
@@ -21,16 +21,23 @@ import { ExportContext } from '../pulse/ExportContext';
 export default function App() {
   const baseComposition = usePulseStore((s) => s.composition);
   const {
+    stackCanvasWidth, stackCanvasHeight,
     cycleDuration, pulsesPerScroll, scrollEasing, scrollEasingCurve, playing, scrollEnabled,
-    atomCount, atomPalette, atomAlignmentOverrides, phaseMode, phaseStep, phaseSpread,
+    atomPalette, atomAlignmentOverrides, phaseMode, phaseStep, phaseSpread,
   } = useStackStore();
-  // Stack canvas is always 4 atoms tall — derived from the live atom dimensions.
-  // Changing canvas size in Pulse auto-resizes Stack.
-  const VISIBLE_ATOMS = 4;
-  const canvas = {
-    width: baseComposition.canvasWidth,
-    height: baseComposition.canvasHeight * VISIBLE_ATOMS,
-  };
+  // ----- Canvas-driven atom sizing -----
+  // The Stack canvas is set independently (preset or custom). The Pulse atom's
+  // canvasWidth × canvasHeight only define the atom's ASPECT RATIO. Inside Stack:
+  //   atomDisplayWidth  = stackCanvasWidth                 (always fills width)
+  //   atomDisplayHeight = stackCanvasWidth × atomAspect   (preserves Pulse's aspect)
+  //   atomCount         = floor(stackCanvasH / atomDisplayHeight)
+  // → tall (portrait) canvases tile many atoms; wider canvases tile fewer.
+  // Typography scales naturally because each atom uses its own viewBox so all
+  // canvas-space lengths (font size, gaps) shrink/grow with the display size.
+  const canvas = { width: stackCanvasWidth, height: stackCanvasHeight };
+  const atomAspect = baseComposition.canvasHeight / Math.max(1, baseComposition.canvasWidth);
+  const atomDisplayHeight = stackCanvasWidth * atomAspect;
+  const atomCount = Math.max(1, Math.floor(stackCanvasHeight / Math.max(1, atomDisplayHeight)));
   // Effective atom loopDuration in Stack = scroll cycle / pulses per scroll.
   // Atoms in Stack ignore Pulse's loopDuration so the scroll rhythm is always clean.
   const atomLoopDurationInStack = Math.max(0.05, cycleDuration / Math.max(1, pulsesPerScroll));
@@ -55,11 +62,13 @@ export default function App() {
       const merged = base.alignments.map((m, li) => override[li] ?? m);
       return { alignments: merged };
     };
+    // Per-atom slots cycle every SLOT_COUNT (4): atom 0,4,8,… use slot 0;
+    // atom 1,5,9,… use slot 1; etc. Both palette and alignment overrides cycle.
     const getOverrideArr = (i: number, state: 'stateA' | 'stateB' | 'stateC') =>
-      atomAlignmentOverrides[i]?.[state];
+      atomAlignmentOverrides[i % SLOT_COUNT]?.[state];
 
     return Array.from({ length: atomCount }, (_, i) => {
-      const palette = atomPalette[i % Math.max(1, atomPalette.length)] ?? atomPalette[0];
+      const palette = atomPalette[i % SLOT_COUNT] ?? atomPalette[0];
       // Reuse baseComposition.lines BY REFERENCE — same token IDs across atoms
       // means a single shared widths-measurement covers them all (computed below).
       return {
@@ -83,9 +92,10 @@ export default function App() {
     baseComposition.lines, baseComposition.fontFamily, baseComposition.fontSize, sharedLetterSpacingPx,
   );
 
-  const atomH = atoms[0]?.canvasHeight ?? 263;
-  const atomW = atoms[0]?.canvasWidth ?? 1920;
-  const slotCount = Math.ceil(canvas.height / atomH) + 1;
+  // atomDisplayHeight (px in stack-canvas space) is what drives slot positioning,
+  // NOT the atom's own canvasHeight (which is in atom-canvas space — different units).
+  // Slot count = enough to cover the canvas plus one for the scroll seam.
+  const slotCount = Math.ceil(canvas.height / Math.max(1, atomDisplayHeight)) + 1;
 
   // ----- Scroll-only RAF (paused during export; replaced by virtual time) -----
   const scrollTickRef = useRef(0);
@@ -119,7 +129,8 @@ export default function App() {
   const easedScrollT = easingFn(scrollEasing, scrollEasingCurve)(cycleProgress);
   // When scroll is disabled, freeze localScrollY at 0 — atoms keep pulsing
   // horizontally but the canvas no longer moves. Applies to both live view AND export.
-  const localScrollY = scrollEnabled ? easedScrollT * atomH : 0;
+  // Each cycle the canvas snaps up by exactly one atom's display height.
+  const localScrollY = scrollEnabled ? easedScrollT * atomDisplayHeight : 0;
 
   return (
     <div style={{
@@ -146,9 +157,10 @@ export default function App() {
               const atomIdx = (((cycleIdx + slotIdx) % atoms.length) + atoms.length) % atoms.length;
               const atom = atoms[atomIdx];
               if (!atom) return null;
-              const topPct = ((slotIdx * atomH - localScrollY) / canvas.height) * 100;
-              const heightPct = (atomH / canvas.height) * 100;
-              const widthPct = (atomW / canvas.width) * 100;
+              const topPct = ((slotIdx * atomDisplayHeight - localScrollY) / canvas.height) * 100;
+              const heightPct = (atomDisplayHeight / canvas.height) * 100;
+              // Atom always fills the full stack canvas width — no centring needed.
+              const widthPct = 100;
               // During export, override each atom's RAF with the virtual-time-
               // derived raw phase. Atom maps phase → progress internally so
               // trails lag correctly in the reverse half of ping-pong.
@@ -157,15 +169,15 @@ export default function App() {
                 : null;
               return (
                 <div key={`slot-${slotIdx}`} className="stack-slot"
-                  data-slot-x={`${(100 - widthPct) / 2}`}
+                  data-slot-x="0"
                   data-slot-y={`${topPct}`}
                   data-slot-w={`${widthPct}`}
                   data-slot-h={`${heightPct}`}
                   style={{
                     position: 'absolute',
                     top: `${topPct}%`,
-                    left: `${(100 - widthPct) / 2}%`,
-                    width: `${widthPct}%`,
+                    left: 0,
+                    width: '100%',
                     height: `${heightPct}%`,
                   }}>
                   <Atom composition={atom} playing={playing} phaseOverride={phaseOverride}

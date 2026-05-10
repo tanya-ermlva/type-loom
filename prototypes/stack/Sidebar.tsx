@@ -1,22 +1,25 @@
 /**
- * Stack Sidebar — Phase 1.5.
+ * Stack Sidebar — Phase 2 (canvas-driven sizing).
  *
  * Stack-only controls:
+ *   • Canvas: preset dropdown + custom W/H. Drives stack canvas dimensions.
  *   • Scroll: cycle duration + scroll easing + play/pause
- *   • Atoms: count slider + per-atom colour rows
+ *   • Atoms: phase mode + per-atom palette (4 slots, cycles)
+ *   • Alignment overrides: 4 slots, atoms cycle through them
  *
+ * Atom display size and count derive from canvas + atom aspect ratio (see App).
  * Horizontal animation, alignments, character effects come from Pulse — Sidebar
  * shows a note linking to the Atom view for those.
  */
 import { useState, type CSSProperties, type ReactNode } from 'react';
-import { useStore } from './store';
+import { useStore, SLOT_COUNT, type CanvasPreset } from './store';
 import { useStore as usePulseStore, type AlignmentMode, type CubicBezierCurve, type EasingMode } from '../pulse/store';
 import { CurveEditor } from '../pulse/CurveEditor';
 import { useExportContext } from '../pulse/ExportContext';
 import { exportPngSequence } from '../pulse/export';
 
 const ALIGNMENT_OPTIONS: AlignmentMode[] = [
-  'left', 'right', 'centered', 'justified',
+  'left', 'right', 'centered', 'justified', 'justified-chars',
   'stretched', 'gravity-left', 'gravity-right', 'hugging-edges',
   'scattered', 'mirrored', 'offset-justified', 'exploded',
 ];
@@ -36,6 +39,32 @@ const EASING_OPTIONS: EasingMode[] = [
   'cubic-bezier',
 ];
 
+const CANVAS_PRESET_OPTIONS: { value: CanvasPreset; label: string }[] = [
+  { value: 'wide',          label: 'Wide 16:9 (1920×1080)' },
+  { value: 'square',        label: 'Square 1:1 (1080×1080)' },
+  { value: 'portrait-3-4',  label: 'Portrait 3:4 (1080×1440)' },
+  { value: 'a4-portrait',   label: 'A4 portrait (1240×1754)' },
+  { value: 'a4-landscape',  label: 'A4 landscape (1754×1240)' },
+  { value: 'a3-portrait',   label: 'A3 portrait (1748×2480)' },
+  { value: 'a3-landscape',  label: 'A3 landscape (2480×1748)' },
+  { value: 'custom',        label: 'Custom (free W × H)' },
+];
+
+/**
+ * Derive how many atoms tile inside the current stack canvas, given the live
+ * Pulse atom aspect ratio. Same math as Stack App.tsx — kept inline here so
+ * the Sidebar can show a live count + atom display dimensions.
+ */
+function useDerivedAtomCount() {
+  const baseComposition = usePulseStore((s) => s.composition);
+  const stackCanvasWidth = useStore((s) => s.stackCanvasWidth);
+  const stackCanvasHeight = useStore((s) => s.stackCanvasHeight);
+  const aspect = baseComposition.canvasHeight / Math.max(1, baseComposition.canvasWidth);
+  const atomDisplayHeight = stackCanvasWidth * aspect;
+  const count = Math.max(1, Math.floor(stackCanvasHeight / Math.max(1, atomDisplayHeight)));
+  return { count, atomDisplayHeight, atomDisplayWidth: stackCanvasWidth };
+}
+
 export function Sidebar() {
   return (
     <aside style={{
@@ -43,6 +72,7 @@ export function Sidebar() {
       background: '#18181b', color: '#e4e4e7', overflowY: 'auto', fontSize: 12,
     }}>
       <NoteSection />
+      <CanvasSection />
       <ScrollSection />
       <AtomsSection />
       <AlignmentOverridesSection />
@@ -60,9 +90,50 @@ function NoteSection() {
       <p style={{ fontSize: 11, color: '#a1a1aa', lineHeight: 1.5, margin: 0 }}>
         Each atom uses the live composition from <a href="../pulse/" style={{ color: '#60a5fa', textDecoration: 'underline' }}>Atom</a>.
         Edit alignment, character effects, easing, fonts there — all atoms here update together.
-        Atoms differ only by colour and phase offset.
+        Atoms differ only by colour and phase offset. Atom count auto-fills the canvas height
+        based on the atom's aspect ratio.
       </p>
     </div>
+  );
+}
+
+function CanvasSection() {
+  const canvasPreset = useStore((s) => s.canvasPreset);
+  const setCanvasPreset = useStore((s) => s.setCanvasPreset);
+  const stackCanvasWidth = useStore((s) => s.stackCanvasWidth);
+  const stackCanvasHeight = useStore((s) => s.stackCanvasHeight);
+  const setCustomCanvas = useStore((s) => s.setCustomCanvas);
+  const { count, atomDisplayHeight } = useDerivedAtomCount();
+
+  return (
+    <Section title="Canvas">
+      <Field label="Preset">
+        <select value={canvasPreset}
+          onChange={(e) => setCanvasPreset(e.target.value as CanvasPreset)}
+          style={selectStyle}>
+          {CANVAS_PRESET_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+      </Field>
+      {canvasPreset === 'custom' ? (
+        <>
+          <Slider label="Width" value={stackCanvasWidth} min={400} max={4000} step={10}
+            onChange={(v) => setCustomCanvas(v, stackCanvasHeight)} format={(v) => `${v.toFixed(0)} px`} />
+          <Slider label="Height" value={stackCanvasHeight} min={400} max={4000} step={10}
+            onChange={(v) => setCustomCanvas(stackCanvasWidth, v)} format={(v) => `${v.toFixed(0)} px`} />
+        </>
+      ) : (
+        <p style={{ fontSize: 11, color: '#a1a1aa', margin: '4px 0 6px', fontFamily: 'ui-monospace, monospace' }}>
+          {stackCanvasWidth} × {stackCanvasHeight} ({(stackCanvasWidth / stackCanvasHeight).toFixed(2)}:1)
+        </p>
+      )}
+      <p style={{ fontSize: 11, color: '#a1a1aa', margin: '6px 0 0', fontFamily: 'ui-monospace, monospace' }}>
+        Atoms in stack: <b>{count}</b> &middot; each {stackCanvasWidth} × {Math.round(atomDisplayHeight)} px
+      </p>
+      <p style={{ fontSize: 10, color: '#71717a', lineHeight: 1.4, margin: '6px 0 0' }}>
+        Atom width = canvas width (always fills). Atom height = canvas width × atom aspect from{' '}
+        <a href="../pulse/" style={{ color: '#60a5fa' }}>Atom</a>. Count = floor(canvas H ÷ atom H).
+      </p>
+    </Section>
   );
 }
 
@@ -129,8 +200,7 @@ function ScrollSection() {
 }
 
 function AtomsSection() {
-  const atomCount = useStore((s) => s.atomCount);
-  const setAtomCount = useStore((s) => s.setAtomCount);
+  const { count } = useDerivedAtomCount();
   const atomPalette = useStore((s) => s.atomPalette);
   const setAtomColor = useStore((s) => s.setAtomColor);
   const phaseMode = useStore((s) => s.phaseMode);
@@ -143,13 +213,11 @@ function AtomsSection() {
   // Effective step for the helper text below.
   const effectiveStep = phaseMode === 'step'
     ? phaseStep
-    : (atomCount > 1 ? phaseSpread / (atomCount - 1) : 0);
-  const effectiveSpread = (atomCount - 1) * effectiveStep;
+    : (count > 1 ? phaseSpread / (count - 1) : 0);
+  const effectiveSpread = (count - 1) * effectiveStep;
 
   return (
     <Section title="Atoms">
-      <Slider label="Count" value={atomCount} min={1} max={4} step={1}
-        onChange={setAtomCount} format={(v) => v.toFixed(0)} />
       <Field label="Phase mode">
         <select value={phaseMode}
           onChange={(e) => setPhaseMode(e.target.value as 'step' | 'spread')}
@@ -166,17 +234,18 @@ function AtomsSection() {
           onChange={setPhaseSpread} format={(v) => `${(v * 100).toFixed(1)}%`} />
       )}
       <p style={{ fontSize: 10, color: '#71717a', lineHeight: 1.4, margin: '4px 0 8px' }}>
-        With {atomCount} atoms, neighbours are {(effectiveStep * 100).toFixed(1)}% apart;
-        atom {atomCount} lags atom 1 by {(effectiveSpread * 100).toFixed(1)}%.{' '}
+        With {count} atom{count > 1 ? 's' : ''}, neighbours are {(effectiveStep * 100).toFixed(1)}% apart;
+        atom {count} lags atom 1 by {(effectiveSpread * 100).toFixed(1)}%.{' '}
         {phaseMode === 'step'
-          ? 'Adding atoms widens the total cascade.'
-          : 'Adding atoms tightens the per-atom delta — total cascade stays constant.'}
+          ? 'More atoms (taller canvas) widens the total cascade.'
+          : 'More atoms tightens the per-atom delta — total cascade stays constant.'}
       </p>
-      <div style={{ marginTop: 6, marginBottom: 4, fontSize: 10, color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.12em' }}>Palette</div>
+      <div style={{ marginTop: 6, marginBottom: 4, fontSize: 10, color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.12em' }}>
+        Palette · {SLOT_COUNT} slots, atoms cycle
+      </div>
       {atomPalette.map((p, i) => (
         <div key={i} style={{
           display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6,
-          opacity: i < atomCount ? 1 : 0.4,
         }}>
           <span style={{ width: 22, fontSize: 10, color: '#71717a', fontFamily: 'ui-monospace, monospace' }}>{i + 1}</span>
           <ColorChip label="bg" value={p.blockColor}
@@ -190,7 +259,6 @@ function AtomsSection() {
 }
 
 function AlignmentOverridesSection() {
-  const atomCount = useStore((s) => s.atomCount);
   const overrides = useStore((s) => s.atomAlignmentOverrides);
   const setAtomAlignment = useStore((s) => s.setAtomAlignment);
   const resetAtomAlignments = useStore((s) => s.resetAtomAlignments);
@@ -206,10 +274,11 @@ function AlignmentOverridesSection() {
   return (
     <Section title="Alignment overrides">
       <p style={{ fontSize: 10, color: '#71717a', lineHeight: 1.4, margin: '0 0 10px' }}>
-        Override per-atom per-line alignment. Leave on <b>inherit</b> to use the value from{' '}
+        Override per-atom per-line alignment. {SLOT_COUNT} slots — atoms beyond slot {SLOT_COUNT} cycle back
+        (atom {SLOT_COUNT + 1} reuses slot 1, etc.). Leave on <b>inherit</b> to use the value from{' '}
         <a href="../pulse/" style={{ color: '#60a5fa' }}>Atom</a>.
       </p>
-      {Array.from({ length: atomCount }, (_, atomIdx) => {
+      {Array.from({ length: SLOT_COUNT }, (_, atomIdx) => {
         const ovr = overrides[atomIdx] ?? {};
         const hasAny = !!(ovr.stateA || ovr.stateB || ovr.stateC);
         return (
@@ -221,14 +290,14 @@ function AlignmentOverridesSection() {
               marginBottom: 6, fontSize: 10, color: '#a1a1aa',
               textTransform: 'uppercase', letterSpacing: '0.12em',
             }}>
-              <span>Atom {atomIdx + 1}</span>
+              <span>Slot {atomIdx + 1}</span>
               {hasAny && (
                 <button onClick={() => resetAtomAlignments(atomIdx)}
                   style={{
                     background: 'transparent', border: 0, color: '#71717a',
                     fontSize: 10, cursor: 'pointer', padding: 0,
                   }}
-                  title="Reset all overrides for this atom">reset</button>
+                  title="Reset all overrides for this slot">reset</button>
               )}
             </div>
             {states.map(({ key, label }) => (
@@ -267,7 +336,7 @@ function AlignmentOverridesSection() {
 function ExportSection() {
   const setPlaying = useStore((s) => s.setPlaying);
   const cycleDuration = useStore((s) => s.cycleDuration);
-  const atomCount = useStore((s) => s.atomCount);
+  const { count } = useDerivedAtomCount();
   const ctx = useExportContext();
   const [fps, setFps] = useState(30);
   const [progress, setProgress] = useState<number | null>(null);
@@ -282,7 +351,7 @@ function ExportSection() {
     setPlaying(false);
     setProgress(0);
     const ts = stamp();
-    const zipName = `stack-${cycleDuration.toFixed(1)}s-${fps}fps-${atomCount}a-${ts}.zip`;
+    const zipName = `stack-${cycleDuration.toFixed(1)}s-${fps}fps-${count}a-${ts}.zip`;
     try {
       await exportPngSequence({
         frames, fps, zipName,
@@ -393,3 +462,4 @@ function stamp(): string {
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
 }
+
