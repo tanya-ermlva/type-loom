@@ -328,7 +328,7 @@ function AnimationCharacterSection() {
               background: '#27272a', color: '#a1a1aa', border: 0, borderRadius: 4, cursor: 'pointer',
             }}>+ Add trail color</button>
           <p style={{ fontSize: 10, color: '#71717a', lineHeight: 1.4, margin: '6px 0 0' }}>
-            Each trail is the bg rect sampled at an earlier point in the animation curve (same easing as the rest). Trail i lags the main rect by (i+1) × lag step. Closer trails on top.
+            Per-token trails sampled at earlier points on the same curve. Each token leaves its trail on the side it's moving away from (token going left → trails on right, and vice versa). Lines that just expand outward show direction per token. Trail i lags by (i+1) × step. Closer trails on top.
           </p>
         </>
       )}

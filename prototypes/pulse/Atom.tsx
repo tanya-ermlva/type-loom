@@ -192,21 +192,15 @@ export function Atom({
         const fillMode = bgBoundsModes?.[li] ?? 'continuous';
         return (
           <g key={lines[li].id}>
-            {/* Trails are rendered first (furthest lag at the back), then closer trails,
-                then the main rect on top. Same easing/lineProgress as the main animation —
-                each trail is just an earlier sample of the same curve. */}
+            {/* Trails: ALWAYS per-token, regardless of fillMode. Each trail = the
+                token's bg-rect sampled at an earlier point on the same curve, so
+                a token moving left leaves trails on its right (where it came from)
+                and vice versa. For lines where the line-bg as a whole only grows
+                without translating, per-token trails still reveal direction per token. */}
             {trailsEnabled && row.trailBgPositions && [...row.trailBgPositions].reverse().map((trailPos, revIdx) => {
               const ti = row.trailBgPositions!.length - 1 - revIdx;
               const color = trailColors[ti];
               if (!color || !trailPos.length) return null;
-              if (fillMode === 'continuous') {
-                const tx = Math.min(...trailPos.map((p) => p.x));
-                const tr = Math.max(...trailPos.map((p) => p.x + p.width));
-                return (
-                  <rect key={`trail-${li}-${ti}`}
-                    x={tx} y={bgY} width={tr - tx} height={lineHeight} fill={color} />
-                );
-              }
               return trailPos.map((p) => (
                 <rect key={`trail-${li}-${ti}-${p.id}`}
                   x={p.x} y={bgY} width={p.width} height={lineHeight} fill={color} />
