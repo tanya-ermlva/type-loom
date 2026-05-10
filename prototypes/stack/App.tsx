@@ -46,10 +46,14 @@ export default function App() {
   // Each gets a unique line/token id prefix so React + useTokenWidths see stable identity.
   const atoms: Composition[] = useMemo(() => {
     // Per-atom phase delta depends on mode:
-    //   • 'step'   — fixed delta between adjacent atoms (i * phaseStep).
-    //   • 'spread' — divide phaseSpread evenly across (count - 1) gaps.
+    //   • 'step'            — fixed delta between adjacent atoms (i * phaseStep).
+    //   • 'spread'          — divide phaseSpread evenly across (count - 1) gaps.
+    //   • 'viewport-spread' — atoms have NO baked-in offset; the slot-rendering
+    //                         pass below adds a slot-position-based phase, so
+    //                         the cascade is fixed in viewport, not on atoms.
     const stepFromMode = (i: number): number => {
       if (phaseMode === 'step') return i * phaseStep;
+      if (phaseMode === 'viewport-spread') return 0;
       if (atomCount <= 1) return 0;
       return (i / (atomCount - 1)) * phaseSpread;
     };
@@ -161,8 +165,20 @@ export default function App() {
           }}>
             {atoms.length > 0 && Array.from({ length: slotCount }, (_, slotIdx) => {
               const atomIdx = (((cycleIdx + slotIdx) % atoms.length) + atoms.length) % atoms.length;
-              const atom = atoms[atomIdx];
-              if (!atom) return null;
+              const atomBase = atoms[atomIdx];
+              if (!atomBase) return null;
+              // viewport-spread: each slot has a FIXED phase based on its
+              // viewport position. Atom compositions cycle through these
+              // slot positions as scroll progresses. The cascade pattern
+              // stays anchored in the viewport (top = 0, bottom = phaseSpread)
+              // — no visible "wrap" seam where phase jumps from max → 0.
+              const atom = phaseMode === 'viewport-spread' && atomCount > 1
+                ? {
+                    ...atomBase,
+                    phaseOffset: (((baseComposition.phaseOffset ?? 0)
+                      + (slotIdx / (atomCount - 1)) * phaseSpread) % 1 + 1) % 1,
+                  }
+                : atomBase;
               const topPct = ((slotIdx * atomDisplayHeight - localScrollY) / canvas.height) * 100;
               const heightPct = (atomDisplayHeight / canvas.height) * 100;
               // Atom always fills the full stack canvas width — no centring needed.

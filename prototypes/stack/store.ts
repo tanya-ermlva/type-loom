@@ -123,10 +123,16 @@ export interface StackState {
   atomAlignmentOverrides: AtomAlignmentOverride[];
   /**
    * How per-atom phase offsets are derived:
-   *   • 'step'   — fixed delta between adjacent atoms (atoms add to total spread as count grows).
-   *   • 'spread' — fixed total cascade across N atoms (delta shrinks as count grows).
+   *   • 'step'            — fixed delta between adjacent atoms (atoms add to total spread as count grows).
+   *   • 'spread'          — fixed total cascade across N atoms (delta shrinks as count grows).
+   *   • 'viewport-spread' — phase is bound to the SLOT POSITION in the viewport,
+   *                         not to the atom composition. Top slot always at phase 0,
+   *                         bottom slot at phaseSpread%. As you scroll, atom
+   *                         compositions cycle through these slot positions,
+   *                         each picking up the slot's phase. Eliminates the
+   *                         visible "seam" where the cascade wraps from max → 0.
    */
-  phaseMode: 'step' | 'spread';
+  phaseMode: 'step' | 'spread' | 'viewport-spread';
   /** Per-atom step in 'step' mode. */
   phaseStep: number;
   /** Total spread across all atoms in 'spread' mode. */
@@ -168,7 +174,7 @@ interface Store extends StackState {
                      lineIdx: number, mode: AlignmentMode | null) => void;
   resetAtomAlignments: (atomIdx: number) => void;
   setPhaseStep: (v: number) => void;
-  setPhaseMode: (v: 'step' | 'spread') => void;
+  setPhaseMode: (v: 'step' | 'spread' | 'viewport-spread') => void;
   setPhaseSpread: (v: number) => void;
   reset: () => void;
 }

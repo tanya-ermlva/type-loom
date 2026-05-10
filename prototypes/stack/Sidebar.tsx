@@ -239,10 +239,11 @@ function AtomsSection() {
     <Section title="Atoms">
       <Field label="Phase mode">
         <select value={phaseMode}
-          onChange={(e) => setPhaseMode(e.target.value as 'step' | 'spread')}
+          onChange={(e) => setPhaseMode(e.target.value as 'step' | 'spread' | 'viewport-spread')}
           style={selectStyle}>
           <option value="step">Per-atom step (fixed delta between neighbours)</option>
-          <option value="spread">Total spread (fixed cascade across all atoms)</option>
+          <option value="spread">Total spread (cascade tied to atoms — visible seam)</option>
+          <option value="viewport-spread">Viewport spread (cascade fixed in viewport — no seam)</option>
         </select>
       </Field>
       {phaseMode === 'step' ? (
@@ -255,9 +256,9 @@ function AtomsSection() {
       <p style={{ fontSize: 10, color: '#71717a', lineHeight: 1.4, margin: '4px 0 8px' }}>
         With {count} atom{count > 1 ? 's' : ''}, neighbours are {(effectiveStep * 100).toFixed(1)}% apart;
         atom {count} lags atom 1 by {(effectiveSpread * 100).toFixed(1)}%.{' '}
-        {phaseMode === 'step'
-          ? 'More atoms (taller canvas) widens the total cascade.'
-          : 'More atoms tightens the per-atom delta — total cascade stays constant.'}
+        {phaseMode === 'step' && 'More atoms (taller canvas) widens the total cascade.'}
+        {phaseMode === 'spread' && 'More atoms tightens the per-atom delta — total cascade stays constant. Cascade pattern is bound to atoms, so a visible "seam" rotates through the viewport during scroll.'}
+        {phaseMode === 'viewport-spread' && 'Top slot always at phase 0, bottom always at the spread value. The cascade gradient is fixed in the viewport — atoms cycle through it as they scroll. No visible seam.'}
       </p>
       <div style={{ marginTop: 6, marginBottom: 4, fontSize: 10, color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.12em' }}>
         Palette · {SLOT_COUNT} slots, atoms cycle
