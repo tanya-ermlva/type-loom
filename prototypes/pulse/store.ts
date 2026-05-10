@@ -114,16 +114,6 @@ export interface Composition {
   characterStagger: number;       // 0..0.5, per-character stagger window
   characterEffect: CharacterEffect;
   characterAmplitude: number;     // strength of the effect (px or degrees, depending on mode)
-  /**
-   * Position-driven per-letter scale: each letter scales uniformly DOWN based
-   * on its current X position relative to canvas center. At dead centre scale=1;
-   * at the canvas edge scale = 1 - borderScaleAmplitude (letters shrink toward
-   * borders, grow back to full size returning to centre). Composes with any
-   * active character effect (multiplied into its scaleY).
-   */
-  borderScaleEnabled: boolean;
-  /** 0..1 — amount letters shrink at the literal canvas edge (e.g. 0.3 → 0.7× at edge). */
-  borderScaleAmplitude: number;
   // Debug
   showTokenBounds: boolean;
   showLineBounds: boolean;
@@ -183,8 +173,6 @@ export const DEFAULT_COMPOSITION: Composition = {
   characterStagger: 0.3,
   characterEffect: 'bow',
   characterAmplitude: 30,
-  borderScaleEnabled: false,
-  borderScaleAmplitude: 0.3,
   showTokenBounds: false,
   showLineBounds: false,
   showCanvasGrid: false,

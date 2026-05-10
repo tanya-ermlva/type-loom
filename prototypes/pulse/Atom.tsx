@@ -70,7 +70,6 @@ export function Atom({
     edgePadding, stateA, stateB, stateC, useStateC, bgBoundsModes,
     characterStaggerEnabled, characterStagger,
     characterEffect: charEffectMode, characterAmplitude,
-    borderScaleEnabled, borderScaleAmplitude,
     easing, easingCurve,
     loopDuration, direction, phaseOffset,
     perTokenStagger, perLineOffset, bgLag,
@@ -278,52 +277,30 @@ export function Atom({
               const tokY = baselineY + (p.yJ ?? 0);
               const useStretch = (p.scaleX ?? 1) !== 1 && p.width > 0;
               const tokMetrics = widths?.get(tok.id);
-              // Per-char render is needed if we have ANY per-letter effect:
-              //   • a time-based character effect (bow/fan/stretch/wave with stagger)
-              //   • position-based border-scale (scales each letter by its own X)
-              const hasTimeEffect = characterStaggerEnabled && charEffectMode !== 'none';
               const renderPerChar =
-                (hasTimeEffect || borderScaleEnabled) &&
-                !!tokMetrics && tokMetrics.letters.length > 0;
+                characterStaggerEnabled &&
+                charEffectMode !== 'none' &&
+                tokMetrics && tokMetrics.letters.length > 0;
 
-              if (renderPerChar && tokMetrics) {
+              if (renderPerChar) {
                 const totalChars = tokMetrics.letters.length;
                 const segLocal = p.eased ?? 0;
-                const halfCanvas = canvasWidth / 2;
                 return (
                   <g key={tok.id}>
                     {Array.from(tok.text).map((ch, ci) => {
                       const lm = tokMetrics.letters[ci];
                       if (!lm) return null;
-                      const eff = hasTimeEffect
-                        ? characterEffect(charEffectMode, ci, totalChars,
-                            tokenProgress(segLocal, characterStagger, totalChars, ci),
-                            characterAmplitude)
-                        : { dx: 0, dy: 0, rotate: 0, scaleY: 1 };
+                      const charLocal = tokenProgress(segLocal, characterStagger, totalChars, ci);
+                      const eff = characterEffect(charEffectMode, ci, totalChars, charLocal, characterAmplitude);
                       const cx = p.x + lm.offsetX;
                       const cy = tokY;
                       const cxCenter = cx + lm.width / 2;
-                      // Position-driven uniform scale: 1 at canvas center,
-                      // 1-amplitude at literal edge (letters shrink toward
-                      // the borders and grow back to full size at centre).
-                      // Clamp dist so off-canvas letters don't go negative.
-                      const distNorm = halfCanvas > 0
-                        ? Math.min(1, Math.abs(cxCenter - halfCanvas) / halfCanvas)
-                        : 0;
-                      const borderScale = borderScaleEnabled
-                        ? Math.max(0, 1 - borderScaleAmplitude * distNorm)
-                        : 1;
-                      // Compose all transforms around the letter's center via
-                      // one translate-scale-rotate-translate sandwich. Combine
-                      // border-scale (uniform) with effect's scaleY by multiplying.
-                      const sX = borderScale;
-                      const sY = borderScale * eff.scaleY;
                       const transforms: string[] = [];
-                      if (eff.rotate !== 0 || sX !== 1 || sY !== 1) {
-                        transforms.push(`translate(${cxCenter} ${cy})`);
-                        if (eff.rotate !== 0) transforms.push(`rotate(${eff.rotate})`);
-                        if (sX !== 1 || sY !== 1) transforms.push(`scale(${sX} ${sY})`);
-                        transforms.push(`translate(${-cxCenter} ${-cy})`);
+                      if (eff.rotate !== 0) transforms.push(`rotate(${eff.rotate} ${cxCenter} ${cy})`);
+                      if (eff.scaleY !== 1) {
+                        transforms.push(
+                          `translate(${cxCenter} ${cy}) scale(1 ${eff.scaleY}) translate(${-cxCenter} ${-cy})`,
+                        );
                       }
                       const transform = transforms.length ? transforms.join(' ') : undefined;
                       return (
