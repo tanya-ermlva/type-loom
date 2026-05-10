@@ -1,0 +1,209 @@
+/**
+ * Bloom Sidebar — controls every field on State A and State B + the
+ * playback / canvas options. Two `StateSection`s share the same field set
+ * and are wired through `which: 'A' | 'B'` to the matching store updater.
+ */
+import type { CSSProperties, ReactNode } from 'react';
+import { useStore } from './store';
+import type { BlendMode } from './store';
+
+const BLEND_MODES: BlendMode[] = [
+  'normal', 'multiply', 'screen', 'overlay',
+  'difference', 'lighten', 'darken',
+];
+
+export function Sidebar() {
+  return (
+    <aside style={{
+      width: 320, flexShrink: 0, borderLeft: '1px solid #27272a',
+      background: '#18181b', color: '#e4e4e7', overflowY: 'auto', fontSize: 12,
+    }}>
+      <PlaybackSection />
+      <CanvasSection />
+      <StateSection which="A" />
+      <StateSection which="B" />
+      <ResetSection />
+    </aside>
+  );
+}
+
+// ---------- Sections ----------
+
+function PlaybackSection() {
+  const playing = useStore((s) => s.playing);
+  const cycleDuration = useStore((s) => s.cycleDuration);
+  const gManual = useStore((s) => s.gManual);
+  const setPlaying = useStore((s) => s.setPlaying);
+  const setCycleDuration = useStore((s) => s.setCycleDuration);
+  const setGManual = useStore((s) => s.setGManual);
+
+  return (
+    <Section title="Playback">
+      <button
+        onClick={() => setPlaying(!playing)}
+        style={{
+          width: '100%', padding: '6px', marginBottom: 8,
+          background: '#27272a', color: '#e4e4e7',
+          border: 0, borderRadius: 4, cursor: 'pointer',
+        }}
+      >{playing ? '❚❚ Pause' : '▶ Play'}</button>
+      <Slider label="Cycle dur" value={cycleDuration} min={0.2} max={6} step={0.1}
+        onChange={setCycleDuration} format={(v) => `${v.toFixed(1)}s`} />
+      {!playing && (
+        <Slider label="g (manual)" value={gManual} min={0} max={1} step={0.01}
+          onChange={setGManual} format={(v) => v.toFixed(2)} />
+      )}
+      <p style={{ fontSize: 10, color: '#71717a', lineHeight: 1.4, margin: '6px 0 0' }}>
+        Auto-loops A → B → A while playing. Pause to scrub `g` by hand and
+        inspect intermediate frames.
+      </p>
+    </Section>
+  );
+}
+
+function CanvasSection() {
+  const bgColor = useStore((s) => s.bgColor);
+  const blendMode = useStore((s) => s.blendMode);
+  const setBgColor = useStore((s) => s.setBgColor);
+  const setBlendMode = useStore((s) => s.setBlendMode);
+
+  return (
+    <Section title="Canvas">
+      <Field label="Background">
+        <input type="color" value={bgColor}
+          onChange={(e) => setBgColor(e.target.value)}
+          style={colorInputStyle} />
+      </Field>
+      <Field label="Blend mode">
+        <select value={blendMode}
+          onChange={(e) => setBlendMode(e.target.value as BlendMode)}
+          style={selectStyle}>
+          {BLEND_MODES.map((m) => <option key={m} value={m}>{m}</option>)}
+        </select>
+      </Field>
+    </Section>
+  );
+}
+
+export function StateSection({ which }: { which: 'A' | 'B' }) {
+  const state = useStore((s) => (which === 'A' ? s.stateA : s.stateB));
+  const update = useStore((s) => (which === 'A' ? s.updateStateA : s.updateStateB));
+  const subtitle = which === 'A'
+    ? 'rest — what you see at g = 0'
+    : 'active — what you see at g = 1';
+
+  const cascadeHint = which === 'A'
+    ? 'Editing colors here also updates State B.'
+    : 'Editing colors here is independent — State A is left alone.';
+
+  return (
+    <Section title={`State ${which}`} subtitle={subtitle}>
+      <SubLabel>Dot · always visible</SubLabel>
+      <Slider label="Radius" value={state.dotRadius} min={0} max={60} step={0.5}
+        onChange={(v) => update({ dotRadius: v })} format={(v) => v.toFixed(1)} />
+      <Field label="Color">
+        <input type="color" value={state.dotColor}
+          onChange={(e) => update({ dotColor: e.target.value })}
+          style={colorInputStyle} />
+      </Field>
+      <Slider label="Opacity" value={state.dotOpacity} min={0} max={1} step={0.01}
+        onChange={(v) => update({ dotOpacity: v })} format={(v) => v.toFixed(2)} />
+
+      <SubLabel>Outline · grows on top</SubLabel>
+      <Slider label="Radius" value={state.outlineRadius} min={0} max={80} step={0.5}
+        onChange={(v) => update({ outlineRadius: v })} format={(v) => v.toFixed(1)} />
+      <Slider label="Stroke" value={state.outlineStroke} min={0} max={80} step={0.5}
+        onChange={(v) => update({ outlineStroke: v })} format={(v) => v.toFixed(1)} />
+      <Field label="Color">
+        <input type="color" value={state.outlineColor}
+          onChange={(e) => update({ outlineColor: e.target.value })}
+          style={colorInputStyle} />
+      </Field>
+      <Slider label="Opacity" value={state.outlineOpacity} min={0} max={1} step={0.01}
+        onChange={(v) => update({ outlineOpacity: v })} format={(v) => v.toFixed(2)} />
+      <p style={{ fontSize: 10, color: '#71717a', lineHeight: 1.4, margin: '6px 0 0' }}>
+        {cascadeHint} When stroke ≥ 2 × radius the outline's inner edge
+        crosses the centre and becomes a filled disc that engulfs the dot.
+      </p>
+    </Section>
+  );
+}
+
+function ResetSection() {
+  const reset = useStore((s) => s.reset);
+  return (
+    <Section title="Reset">
+      <button onClick={() => reset()} style={{
+        width: '100%', padding: '6px',
+        background: '#27272a', color: '#f87171',
+        border: 0, borderRadius: 4, cursor: 'pointer',
+      }}>Restore defaults</button>
+    </Section>
+  );
+}
+
+// ---------- Layout helpers (also used by bloom-stack/Sidebar) ----------
+
+export function Section({ title, subtitle, children }: {
+  title: string; subtitle?: string; children: ReactNode;
+}) {
+  return (
+    <div style={{ borderBottom: '1px solid #27272a', padding: '12px 14px' }}>
+      <div style={{
+        color: '#a1a1aa', fontSize: 10, textTransform: 'uppercase',
+        letterSpacing: '0.06em', marginBottom: subtitle ? 2 : 8,
+      }}>{title}</div>
+      {subtitle && (
+        <div style={{ color: '#71717a', fontSize: 10, marginBottom: 8 }}>{subtitle}</div>
+      )}
+      {children}
+    </div>
+  );
+}
+
+export function SubLabel({ children }: { children: ReactNode }) {
+  return (
+    <div style={{
+      color: '#71717a', fontSize: 10, marginTop: 8, marginBottom: 4,
+      textTransform: 'uppercase', letterSpacing: '0.04em',
+    }}>{children}</div>
+  );
+}
+
+export function Field({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div style={{ marginBottom: 8 }}>
+      <div style={{ color: '#a1a1aa', fontSize: 11, marginBottom: 3 }}>{label}</div>
+      {children}
+    </div>
+  );
+}
+
+export function Slider({ label, value, min, max, step, onChange, format }: {
+  label: string; value: number; min: number; max: number; step: number;
+  onChange: (v: number) => void; format: (v: number) => string;
+}) {
+  return (
+    <div style={{ marginBottom: 8 }}>
+      <div style={{
+        display: 'flex', justifyContent: 'space-between',
+        color: '#a1a1aa', fontSize: 11, marginBottom: 3,
+      }}>
+        <span>{label}</span><span>{format(value)}</span>
+      </div>
+      <input type="range" min={min} max={max} step={step} value={value}
+        onChange={(e) => onChange(parseFloat(e.target.value))}
+        style={{ width: '100%', accentColor: '#60a5fa' }} />
+    </div>
+  );
+}
+
+export const selectStyle: CSSProperties = {
+  width: '100%', background: '#0a0a0a', color: '#e4e4e7',
+  border: '1px solid #3f3f46', borderRadius: 4, padding: '4px 6px', fontSize: 11,
+};
+
+export const colorInputStyle: CSSProperties = {
+  width: '100%', height: 28, background: '#0a0a0a',
+  border: '1px solid #3f3f46', borderRadius: 4, padding: 2,
+};

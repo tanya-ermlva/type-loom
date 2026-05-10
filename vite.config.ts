@@ -26,6 +26,10 @@ export default defineConfig({
         pulse: resolve(__dirname, 'prototypes/pulse/index.html'),
         // Stack: vertical infinite scroll of pulse-atoms, synced phase per atom
         stack: resolve(__dirname, 'prototypes/stack/index.html'),
+        // Bloom: dot + outline atom interpolating rest ↔ active (atomic unit for bloom-stack)
+        bloom: resolve(__dirname, 'prototypes/bloom/index.html'),
+        // Bloom Stack: bloom atoms placed at the DFD grid, cursor-proximity-driven
+        bloomStack: resolve(__dirname, 'prototypes/bloom-stack/index.html'),
         // Prototypes hub: static landing page linking to every experiment
         prototypesIndex: resolve(__dirname, 'prototypes/index.html'),
       },
