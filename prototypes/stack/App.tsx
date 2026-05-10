@@ -3,6 +3,7 @@ import { Atom } from '../pulse/Atom';
 import { PrototypeNav } from '../pulse/PrototypeNav';
 import { easingFn } from '../pulse/animation';
 import { useStore as usePulseStore, type Composition } from '../pulse/store';
+import { useTokenWidths } from '../pulse/tokens';
 import { useStore as useStackStore } from './store';
 import { Sidebar } from './Sidebar';
 import { ExportContext } from '../pulse/ExportContext';
@@ -20,9 +21,16 @@ import { ExportContext } from '../pulse/ExportContext';
 export default function App() {
   const baseComposition = usePulseStore((s) => s.composition);
   const {
-    canvas, cycleDuration, pulsesPerScroll, scrollEasing, scrollEasingCurve, playing,
+    cycleDuration, pulsesPerScroll, scrollEasing, scrollEasingCurve, playing, scrollEnabled,
     atomCount, atomPalette, phaseMode, phaseStep, phaseSpread,
   } = useStackStore();
+  // Stack canvas is always 4 atoms tall — derived from the live atom dimensions.
+  // Changing canvas size in Pulse auto-resizes Stack.
+  const VISIBLE_ATOMS = 4;
+  const canvas = {
+    width: baseComposition.canvasWidth,
+    height: baseComposition.canvasHeight * VISIBLE_ATOMS,
+  };
   // Effective atom loopDuration in Stack = scroll cycle / pulses per scroll.
   // Atoms in Stack ignore Pulse's loopDuration so the scroll rhythm is always clean.
   const atomLoopDurationInStack = Math.max(0.05, cycleDuration / Math.max(1, pulsesPerScroll));
@@ -40,21 +48,24 @@ export default function App() {
     };
     return Array.from({ length: atomCount }, (_, i) => {
       const palette = atomPalette[i % Math.max(1, atomPalette.length)] ?? atomPalette[0];
+      // Reuse baseComposition.lines BY REFERENCE — same token IDs across atoms
+      // means a single shared widths-measurement covers them all (computed below).
       return {
         ...baseComposition,
         blockColor: palette?.blockColor ?? baseComposition.blockColor,
         textColor: palette?.textColor ?? baseComposition.textColor,
-        // Override loopDuration so atoms tick in clean integer count per scroll cycle.
         loopDuration: atomLoopDurationInStack,
         phaseOffset: (((baseComposition.phaseOffset ?? 0) + stepFromMode(i)) % 1 + 1) % 1,
-        lines: baseComposition.lines.map((line) => ({
-          ...line,
-          id: `stack${i}-${line.id}`,
-          tokens: line.tokens.map((tok) => ({ ...tok, id: `stack${i}-${tok.id}` })),
-        })),
       };
     });
   }, [baseComposition, atomCount, atomPalette, phaseMode, phaseStep, phaseSpread, atomLoopDurationInStack]);
+
+  // Measure widths ONCE for the shared lines/font params; pass to every atom so
+  // cycle-wrap (slot composition swap) doesn't trigger a per-atom re-measure.
+  const sharedLetterSpacingPx = (baseComposition.fontSize * baseComposition.letterSpacingPct) / 100;
+  const sharedWidths = useTokenWidths(
+    baseComposition.lines, baseComposition.fontFamily, baseComposition.fontSize, sharedLetterSpacingPx,
+  );
 
   const atomH = atoms[0]?.canvasHeight ?? 263;
   const atomW = atoms[0]?.canvasWidth ?? 1920;
@@ -69,7 +80,7 @@ export default function App() {
   const [exportFps, setExportFps] = useState<number>(30);
   const exporting = exportFrame !== null;
   useEffect(() => {
-    if (!playing || exporting) return;
+    if (!playing || exporting || !scrollEnabled) return;
     let raf = 0;
     const start = performance.now();
     const initialOffset = scrollTickRef.current;
@@ -82,7 +93,7 @@ export default function App() {
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playing, exporting]);
+  }, [playing, exporting, scrollEnabled]);
 
   const virtualTime = exporting ? exportFrame! / exportFps : scrollTick;
   const totalCycles = virtualTime / Math.max(0.05, cycleDuration);
@@ -90,7 +101,9 @@ export default function App() {
   const cycleProgress = totalCycles - cycleIdx; // 0..1 within current step
 
   const easedScrollT = easingFn(scrollEasing, scrollEasingCurve)(cycleProgress);
-  const localScrollY = easedScrollT * atomH;
+  // When scroll is disabled, freeze localScrollY at 0 — atoms keep pulsing
+  // horizontally but the canvas no longer moves. Applies to both live view AND export.
+  const localScrollY = scrollEnabled ? easedScrollT * atomH : 0;
 
   return (
     <div style={{
@@ -140,7 +153,8 @@ export default function App() {
                     width: `${widthPct}%`,
                     height: `${heightPct}%`,
                   }}>
-                  <Atom composition={atom} playing={playing} tOverride={tOverride} />
+                  <Atom composition={atom} playing={playing} tOverride={tOverride}
+                    widthsOverride={sharedWidths} />
                 </div>
               );
             })}

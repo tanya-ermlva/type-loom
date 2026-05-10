@@ -62,6 +62,8 @@ function NoteSection() {
 function ScrollSection() {
   const playing = useStore((s) => s.playing);
   const setPlaying = useStore((s) => s.setPlaying);
+  const scrollEnabled = useStore((s) => s.scrollEnabled);
+  const setScrollEnabled = useStore((s) => s.setScrollEnabled);
   const cycleDuration = useStore((s) => s.cycleDuration);
   const setCycleDuration = useStore((s) => s.setCycleDuration);
   const pulsesPerScroll = useStore((s) => s.pulsesPerScroll);
@@ -82,6 +84,14 @@ function ScrollSection() {
           background: '#27272a', color: '#e4e4e7', border: 0, borderRadius: 4, cursor: 'pointer',
         }}
       >{playing ? '❚❚ Pause' : '▶ Play'}</button>
+      <label style={{
+        display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10,
+        cursor: 'pointer', fontSize: 11,
+      }}>
+        <input type="checkbox" checked={!!scrollEnabled}
+          onChange={(e) => setScrollEnabled(e.target.checked)} />
+        <span>Enable vertical scroll motion</span>
+      </label>
       <Slider label="Cycle dur" value={cycleDuration} min={0.3} max={15} step={0.1}
         onChange={setCycleDuration} format={(v) => `${v.toFixed(1)}s`} />
       <Slider label="Pulses" value={pulsesPerScroll} min={1} max={8} step={1}
@@ -175,6 +185,7 @@ function AtomsSection() {
 function ExportSection() {
   const setPlaying = useStore((s) => s.setPlaying);
   const cycleDuration = useStore((s) => s.cycleDuration);
+  const atomCount = useStore((s) => s.atomCount);
   const ctx = useExportContext();
   const [fps, setFps] = useState(30);
   const [progress, setProgress] = useState<number | null>(null);
@@ -188,9 +199,11 @@ function ExportSection() {
     if (!ctx) return;
     setPlaying(false);
     setProgress(0);
+    const ts = stamp();
+    const zipName = `stack-${cycleDuration.toFixed(1)}s-${fps}fps-${atomCount}a-${ts}.zip`;
     try {
       await exportPngSequence({
-        frames, fps, zipName: 'stack-loop.zip',
+        frames, fps, zipName,
         prepareFrame: (f) => ctx.prepareFrame(f, fps),
         getSvg: ctx.getSvg,
         onProgress: (p) => setProgress(p),
@@ -290,4 +303,11 @@ function ColorChip({
         }} />
     </div>
   );
+}
+
+/** Compact timestamp `HHMMSS` for unique export filenames within a session. */
+function stamp(): string {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
 }

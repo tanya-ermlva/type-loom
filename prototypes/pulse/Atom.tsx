@@ -11,7 +11,7 @@
  */
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { layoutLine, type TokenPosition, type TokenWidth } from './layout';
-import { useTokenWidths } from './tokens';
+import { useTokenWidths, type TokenMetrics } from './tokens';
 import { characterEffect, easingFn, jitterFor, lerp, tokenProgress } from './animation';
 import type { Composition } from './store';
 
@@ -27,9 +27,17 @@ interface AtomProps {
   tOverride?: number | null;
   /** DOM id added to the root <svg>. Used by export to locate the live element. */
   svgId?: string;
+  /**
+   * If provided, skip the internal token-width measurement and use this map
+   * instead. Lets a parent (e.g., Stack) measure once and share across atoms.
+   */
+  widthsOverride?: Map<string, TokenMetrics> | null;
 }
 
-export function Atom({ composition, playing = true, style, debug = false, tOverride, svgId }: AtomProps) {
+export function Atom({
+  composition, playing = true, style, debug = false,
+  tOverride, svgId, widthsOverride,
+}: AtomProps) {
   const {
     lines, canvasWidth, canvasHeight,
     bgColor, blockColor, textColor,
@@ -46,36 +54,57 @@ export function Atom({ composition, playing = true, style, debug = false, tOverr
   } = composition;
 
   const letterSpacingPx = (fontSize * letterSpacingPct) / 100;
-  const widths = useTokenWidths(lines, fontFamily, fontSize, letterSpacingPx);
+  // Use parent-provided widths if available (Stack passes shared measurements);
+  // otherwise measure ourselves (Pulse playground path).
+  const internalWidths = useTokenWidths(
+    widthsOverride ? null : lines,
+    fontFamily, fontSize, letterSpacingPx,
+  );
+  const widths = widthsOverride ?? internalWidths;
 
-  // ----- Internal RAF ----- drives `t` from composition's own timing.
-  // When `tOverride` is provided, the RAF is bypassed (used for export).
+  // ----- Internal RAF -----
+  // Animation parameters (loopDuration, phaseOffset, direction, useStateC)
+  // are read through a ref inside the RAF loop so updating them doesn't tear
+  // down + restart the RAF — which would otherwise cause a 1-frame mismatch
+  // at composition swaps (visible as an "extra frame" at cycle wrap).
+  // Only `playing` and `tOverride` toggle the RAF on/off.
   const tickRef = useRef(0); // accumulated seconds across pause/resume
   const [tInternal, setT] = useState(0);
   const tFromOverride = tOverride !== null && tOverride !== undefined;
+  const valuesRef = useRef({ loopDuration, phaseOffset, direction, useStateC });
+  valuesRef.current = { loopDuration, phaseOffset, direction, useStateC };
+
   useEffect(() => {
     if (tFromOverride) return;
     if (!playing) return;
-    if (direction === 'freeze-A') { setT(0); return; }
-    if (direction === 'freeze-B') { setT(useStateC ? 1 / 3 : 1); return; }
     let raf = 0;
     const start = performance.now();
     const initialOffset = tickRef.current;
     const loop = (now: number) => {
+      const v = valuesRef.current;
+      if (v.direction === 'freeze-A') {
+        setT(0);
+        raf = requestAnimationFrame(loop);
+        return;
+      }
+      if (v.direction === 'freeze-B') {
+        setT(v.useStateC ? 1 / 3 : 1);
+        raf = requestAnimationFrame(loop);
+        return;
+      }
       const elapsed = initialOffset + (now - start) / 1000;
       tickRef.current = elapsed;
-      const phase = (elapsed / Math.max(0.05, loopDuration) + phaseOffset) % 1;
+      const phase = (elapsed / Math.max(0.05, v.loopDuration) + v.phaseOffset) % 1;
       let progress: number;
-      if (useStateC) progress = phase;
-      else if (direction === 'ping-pong') progress = phase < 0.5 ? phase * 2 : (1 - phase) * 2;
+      if (v.useStateC) progress = phase;
+      else if (v.direction === 'ping-pong') progress = phase < 0.5 ? phase * 2 : (1 - phase) * 2;
       else progress = phase;
       setT(progress);
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playing, loopDuration, phaseOffset, direction, useStateC, tFromOverride]);
+  }, [playing, tFromOverride]);
 
   const t = tFromOverride ? tOverride! : tInternal;
 

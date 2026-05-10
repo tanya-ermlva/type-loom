@@ -28,8 +28,12 @@ export const DEFAULT_PALETTE: AtomColor[] = [
   { blockColor: '#F9576E', textColor: '#D1D1D1' }, // 4. coral
 ];
 
+/**
+ * Stack canvas is no longer stored — it's derived from the atom in Stack App
+ * (always atom.canvasWidth × atom.canvasHeight × 4). Changing atom dimensions
+ * in Pulse automatically resizes the Stack canvas.
+ */
 export interface StackState {
-  canvas: { width: number; height: number };
   /**
    * Total scroll cycle in seconds — primary timing knob. Defines how often the
    * canvas snaps up by one atomHeight, which is the visible rhythm of the stack.
@@ -45,8 +49,13 @@ export interface StackState {
   scrollEasing: EasingMode;
   /** Bezier control points for `scrollEasing === 'cubic-bezier'`. */
   scrollEasingCurve: CubicBezierCurve;
-  /** Auto-cycle on/off. */
+  /** Master pause/play — controls atoms AND scroll. */
   playing: boolean;
+  /**
+   * Independently disable vertical scroll motion. When false, atoms still
+   * pulse horizontally (governed by `playing`) but the canvas stops snapping.
+   */
+  scrollEnabled: boolean;
   /** Number of distinct atom slots in the cycle. Atoms repeat the palette if count > palette.length. */
   atomCount: number;
   /** Per-atom colours. */
@@ -64,12 +73,12 @@ export interface StackState {
 }
 
 export const DEFAULT_STACK_STATE: StackState = {
-  canvas: { width: 1920, height: 1080 },
   cycleDuration: 3.0,            // 3-second scroll cycle
   pulsesPerScroll: 1,            // 1 atom pulse per scroll step (atom = 3s in Stack)
   scrollEasing: 'easeOutQuart',
   scrollEasingCurve: { x1: 0.25, y1: 0.1, x2: 0.25, y2: 1 },
   playing: true,
+  scrollEnabled: true,
   atomCount: 4,
   atomPalette: DEFAULT_PALETTE,
   phaseMode: 'step',
@@ -83,6 +92,7 @@ interface Store extends StackState {
   setScrollEasing: (v: EasingMode) => void;
   setScrollEasingCurve: (curve: CubicBezierCurve) => void;
   setPlaying: (v: boolean) => void;
+  setScrollEnabled: (v: boolean) => void;
   setAtomCount: (v: number) => void;
   setAtomColor: (idx: number, color: Partial<AtomColor>) => void;
   setPhaseStep: (v: number) => void;
@@ -104,6 +114,7 @@ export const useStore = create<Store>()(
       setScrollEasing: (scrollEasing) => set({ scrollEasing }),
       setScrollEasingCurve: (scrollEasingCurve) => set({ scrollEasingCurve }),
       setPlaying: (playing) => set({ playing }),
+      setScrollEnabled: (scrollEnabled) => set({ scrollEnabled }),
       setAtomCount: (atomCount) => set({ atomCount: Math.max(1, Math.min(16, Math.round(atomCount))) }),
       setAtomColor: (idx, color) =>
         set((s) => {
@@ -121,12 +132,12 @@ export const useStore = create<Store>()(
       version: SCHEMA_VERSION,
       partialize: (s) =>
         ({
-          canvas: s.canvas,
           cycleDuration: s.cycleDuration,
           pulsesPerScroll: s.pulsesPerScroll,
           scrollEasing: s.scrollEasing,
           scrollEasingCurve: s.scrollEasingCurve,
           playing: s.playing,
+          scrollEnabled: s.scrollEnabled,
           atomCount: s.atomCount,
           atomPalette: s.atomPalette,
           phaseMode: s.phaseMode,

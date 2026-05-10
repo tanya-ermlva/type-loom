@@ -108,9 +108,11 @@ function ExportSection() {
     if (!ctx) return;
     setPlaying(false);
     setProgress(0);
+    const ts = stamp();
+    const zipName = `pulse-${loopDuration.toFixed(1)}s-${fps}fps-${ts}.zip`;
     try {
       await exportPngSequence({
-        frames, fps, zipName: 'pulse-loop.zip',
+        frames, fps, zipName,
         prepareFrame: (f) => ctx.prepareFrame(f, fps),
         getSvg: ctx.getSvg,
         onProgress: (p) => setProgress(p),
@@ -474,4 +476,11 @@ function Slider({
       </span>
     </div>
   );
+}
+
+/** Compact timestamp `HHMMSS` for unique export filenames within a session. */
+function stamp(): string {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
 }

@@ -47,7 +47,8 @@ export interface TokenMetrics {
  * Returns null while metrics are not yet known (first paint or after a font change).
  */
 export function useTokenWidths(
-  lines: Line[],
+  /** Pass null to skip measurement entirely (e.g., when widths come from elsewhere). */
+  lines: Line[] | null,
   fontFamily: string,
   fontSize: number,
   letterSpacingPx: number,
@@ -55,6 +56,7 @@ export function useTokenWidths(
   const [metrics, setMetrics] = useState<Map<string, TokenMetrics> | null>(null);
 
   useEffect(() => {
+    if (lines === null) return; // caller opted out
     let cancelled = false;
     const measure = async () => {
       // Wait for the font to be ready so first measurements aren't from fallback.
@@ -68,6 +70,7 @@ export function useTokenWidths(
       document.body.appendChild(svg);
       const map = new Map<string, TokenMetrics>();
       try {
+        if (!lines) return; // satisfies TS; outer guard already filtered null
         for (const line of lines) {
           for (const tok of line.tokens) {
             const t = document.createElementNS(NS, 'text') as SVGTextElement;
