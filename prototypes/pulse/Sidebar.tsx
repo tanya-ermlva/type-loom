@@ -336,6 +336,27 @@ function CharacterAnimationSection() {
           </p>
         </>
       )}
+
+      <label style={{
+        display: 'flex', alignItems: 'center', gap: 8,
+        marginTop: 12, marginBottom: 4, cursor: 'pointer', fontSize: 11,
+      }}>
+        <input type="checkbox" checked={!!c.borderScaleEnabled}
+          onChange={(e) => update({ borderScaleEnabled: e.target.checked })} />
+        <span>Border scale (per letter)</span>
+      </label>
+      {c.borderScaleEnabled && (
+        <>
+          <Slider label="Amplitude" value={c.borderScaleAmplitude ?? 0} min={0} max={1} step={0.01}
+            onChange={(v) => update({ borderScaleAmplitude: v })}
+            format={(v) => `+${(v * 100).toFixed(0)}%`} />
+          <p style={{ fontSize: 10, color: '#71717a', lineHeight: 1.5, margin: '6px 0 0' }}>
+            Each letter scales uniformly by its current X relative to canvas centre.
+            Centre = ×1, edges = ×(1 + amplitude). Linear falloff. Composes with the
+            character effect above (multiplied with its scaleY).
+          </p>
+        </>
+      )}
     </Section>
   );
 }
