@@ -141,7 +141,7 @@ function AtomsSection() {
 
   return (
     <Section title="Atoms">
-      <Slider label="Count" value={atomCount} min={1} max={16} step={1}
+      <Slider label="Count" value={atomCount} min={1} max={4} step={1}
         onChange={setAtomCount} format={(v) => v.toFixed(0)} />
       <Field label="Phase mode">
         <select value={phaseMode}
