@@ -273,6 +273,65 @@ function AnimationCharacterSection() {
         onChange={(v) => update({ perLineOffset: v })} format={(v) => v.toFixed(2)} />
       <Slider label="Bg lag" value={c.bgLag} min={0} max={0.3} step={0.01}
         onChange={(v) => update({ bgLag: v })} format={(v) => v.toFixed(2)} />
+
+      <label style={{
+        display: 'flex', alignItems: 'center', gap: 8,
+        marginTop: 12, marginBottom: 4, cursor: 'pointer', fontSize: 11,
+      }}>
+        <input type="checkbox" checked={!!c.trailsEnabled}
+          onChange={(e) => update({ trailsEnabled: e.target.checked })} />
+        <span>Color trails behind bg</span>
+      </label>
+      {c.trailsEnabled && (
+        <>
+          <Slider label="Lag step" value={c.trailLagStep} min={0.01} max={0.15} step={0.005}
+            onChange={(v) => update({ trailLagStep: v })} format={(v) => `${(v * 100).toFixed(1)}%`} />
+          <div style={{ marginTop: 6, marginBottom: 4, fontSize: 10, color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.12em' }}>Trail palette</div>
+          {c.trailColors.map((color, i) => (
+            <div key={i} style={{
+              display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4,
+            }}>
+              <span style={{ width: 22, fontSize: 10, color: '#71717a', fontFamily: 'ui-monospace, monospace' }}>{i + 1}</span>
+              <input type="color" value={color}
+                onChange={(e) => {
+                  const next = c.trailColors.slice();
+                  next[i] = e.target.value;
+                  update({ trailColors: next });
+                }}
+                style={{ width: 24, height: 20, padding: 0, border: '1px solid #3f3f46', background: 'transparent', cursor: 'pointer' }} />
+              <input type="text" value={color}
+                onChange={(e) => {
+                  const next = c.trailColors.slice();
+                  next[i] = e.target.value;
+                  update({ trailColors: next });
+                }}
+                style={{
+                  flex: 1, fontSize: 10, fontFamily: 'ui-monospace, monospace',
+                  background: '#0a0a0a', color: '#e4e4e7',
+                  border: '1px solid #3f3f46', borderRadius: 3, padding: '2px 4px',
+                  minWidth: 0,
+                }} />
+              <button onClick={() => {
+                const next = c.trailColors.slice();
+                next.splice(i, 1);
+                update({ trailColors: next });
+              }} style={{
+                background: 'transparent', border: 0, color: '#71717a',
+                fontSize: 12, cursor: 'pointer', padding: '0 4px',
+              }} title="Remove">×</button>
+            </div>
+          ))}
+          <button
+            onClick={() => update({ trailColors: [...c.trailColors, '#ffffff'] })}
+            style={{
+              width: '100%', padding: '4px', marginTop: 4, fontSize: 10,
+              background: '#27272a', color: '#a1a1aa', border: 0, borderRadius: 4, cursor: 'pointer',
+            }}>+ Add trail color</button>
+          <p style={{ fontSize: 10, color: '#71717a', lineHeight: 1.4, margin: '6px 0 0' }}>
+            Each trail is the bg rect sampled at an earlier point in the animation curve (same easing as the rest). Trail i lags the main rect by (i+1) × lag step. Closer trails on top.
+          </p>
+        </>
+      )}
     </Section>
   );
 }

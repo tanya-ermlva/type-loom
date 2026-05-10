@@ -50,6 +50,7 @@ export function Atom({
     loopDuration, direction, phaseOffset,
     perTokenStagger, perLineOffset, bgLag,
     jitterX, jitterY, jitterSeed,
+    trailsEnabled, trailColors, trailLagStep,
     showTokenBounds, showLineBounds, showCanvasGrid,
   } = composition;
 
@@ -136,8 +137,9 @@ export function Atom({
         ? [[a, b], [b, c], [c, a]]
         : [[a, b]];
 
-      const interp = (which: 'tokens' | 'bg') => a.map((_, ti) => {
-        const baseProg = which === 'bg' ? Math.max(0, lineProgress - bgLag) : lineProgress;
+      const interp = (which: 'tokens' | 'bg', extraLag = 0) => a.map((_, ti) => {
+        const baseLag = which === 'bg' ? bgLag + extraLag : 0;
+        const baseProg = Math.max(0, lineProgress - baseLag);
         const segCount = segments.length;
         const rawSeg = baseProg * segCount;
         const segIdx = Math.min(segCount - 1, Math.max(0, Math.floor(rawSeg)));
@@ -161,10 +163,16 @@ export function Atom({
 
       const tokens = interp('tokens');
       const bgPositions = interp('bg').map(({ id, x, width }) => ({ id, x, width }));
-      return { positions: tokens, bgPositions };
+      // Compute trail bg positions (one per trail color), each at increasing extra lag.
+      const trailBgPositions: { id: string; x: number; width: number }[][] = trailsEnabled
+        ? trailColors.map((_, ti) =>
+            interp('bg', trailLagStep * (ti + 1)).map(({ id, x, width }) => ({ id, x, width })))
+        : [];
+      return { positions: tokens, bgPositions, trailBgPositions };
     });
   }, [layoutsABC, t, easing, easingCurve, perTokenStagger, perLineOffset, bgLag,
-      jitterX, jitterY, jitterSeed, useStateC]);
+      jitterX, jitterY, jitterSeed, useStateC,
+      trailsEnabled, trailColors, trailLagStep]);
 
   const debugOn = debug && (showTokenBounds || showLineBounds || showCanvasGrid);
 
@@ -184,6 +192,26 @@ export function Atom({
         const fillMode = bgBoundsModes?.[li] ?? 'continuous';
         return (
           <g key={lines[li].id}>
+            {/* Trails are rendered first (furthest lag at the back), then closer trails,
+                then the main rect on top. Same easing/lineProgress as the main animation —
+                each trail is just an earlier sample of the same curve. */}
+            {trailsEnabled && row.trailBgPositions && [...row.trailBgPositions].reverse().map((trailPos, revIdx) => {
+              const ti = row.trailBgPositions!.length - 1 - revIdx;
+              const color = trailColors[ti];
+              if (!color || !trailPos.length) return null;
+              if (fillMode === 'continuous') {
+                const tx = Math.min(...trailPos.map((p) => p.x));
+                const tr = Math.max(...trailPos.map((p) => p.x + p.width));
+                return (
+                  <rect key={`trail-${li}-${ti}`}
+                    x={tx} y={bgY} width={tr - tx} height={lineHeight} fill={color} />
+                );
+              }
+              return trailPos.map((p) => (
+                <rect key={`trail-${li}-${ti}-${p.id}`}
+                  x={p.x} y={bgY} width={p.width} height={lineHeight} fill={color} />
+              ));
+            })}
             {fillMode === 'continuous' ? (
               <rect x={bgX} y={bgY} width={bgRight - bgX} height={lineHeight} fill={blockColor} />
             ) : (

@@ -102,6 +102,12 @@ export interface Composition {
   jitterX: number;
   jitterY: number;
   jitterSeed: number;
+  // Color trails — staggered echoes behind the main bg rect.
+  trailsEnabled: boolean;
+  /** Palette used for trails — index 0 is the closest trail to the main rect. */
+  trailColors: string[];
+  /** Lag (fraction of cycle) added per trail relative to the main rect. */
+  trailLagStep: number;
   // Character-level animation (per-letter effects, layered on top of token motion).
   characterStaggerEnabled: boolean;
   characterStagger: number;       // 0..0.5, per-character stagger window
@@ -159,6 +165,9 @@ export const DEFAULT_COMPOSITION: Composition = {
   jitterX: 0,
   jitterY: 0,
   jitterSeed: 1,
+  trailsEnabled: false,
+  trailColors: ['#7DFFB8', '#E453AA', '#0D7EFF', '#F9576E'], // mint, pink, blue, coral
+  trailLagStep: 0.05,
   characterStaggerEnabled: false,
   characterStagger: 0.3,
   characterEffect: 'bow',
