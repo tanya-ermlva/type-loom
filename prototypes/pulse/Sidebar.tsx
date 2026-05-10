@@ -349,10 +349,10 @@ function CharacterAnimationSection() {
         <>
           <Slider label="Amplitude" value={c.borderScaleAmplitude ?? 0} min={0} max={1} step={0.01}
             onChange={(v) => update({ borderScaleAmplitude: v })}
-            format={(v) => `+${(v * 100).toFixed(0)}%`} />
+            format={(v) => `−${(v * 100).toFixed(0)}% at edge`} />
           <p style={{ fontSize: 10, color: '#71717a', lineHeight: 1.5, margin: '6px 0 0' }}>
-            Each letter scales uniformly by its current X relative to canvas centre.
-            Centre = ×1, edges = ×(1 + amplitude). Linear falloff. Composes with the
+            Each letter scales DOWN with its current X relative to canvas centre.
+            Centre = ×1, edges = ×(1 − amplitude). Linear falloff. Composes with the
             character effect above (multiplied with its scaleY).
           </p>
         </>

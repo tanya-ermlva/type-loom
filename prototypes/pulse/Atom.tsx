@@ -304,13 +304,14 @@ export function Atom({
                       const cy = tokY;
                       const cxCenter = cx + lm.width / 2;
                       // Position-driven uniform scale: 1 at canvas center,
-                      // 1+amplitude at literal edge. Clamp dist so off-canvas
-                      // letters don't blow up further than the edge value.
+                      // 1-amplitude at literal edge (letters shrink toward
+                      // the borders and grow back to full size at centre).
+                      // Clamp dist so off-canvas letters don't go negative.
                       const distNorm = halfCanvas > 0
                         ? Math.min(1, Math.abs(cxCenter - halfCanvas) / halfCanvas)
                         : 0;
                       const borderScale = borderScaleEnabled
-                        ? 1 + borderScaleAmplitude * distNorm
+                        ? Math.max(0, 1 - borderScaleAmplitude * distNorm)
                         : 1;
                       // Compose all transforms around the letter's center via
                       // one translate-scale-rotate-translate sandwich. Combine

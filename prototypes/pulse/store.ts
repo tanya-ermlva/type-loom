@@ -115,13 +115,14 @@ export interface Composition {
   characterEffect: CharacterEffect;
   characterAmplitude: number;     // strength of the effect (px or degrees, depending on mode)
   /**
-   * Position-driven per-letter scale: each letter scales uniformly based on
-   * its current X position relative to canvas center. At dead center scale=1;
-   * at the canvas edge scale=1+borderScaleAmplitude. Composes with any active
-   * character effect (multiplied with its scaleY).
+   * Position-driven per-letter scale: each letter scales uniformly DOWN based
+   * on its current X position relative to canvas center. At dead centre scale=1;
+   * at the canvas edge scale = 1 - borderScaleAmplitude (letters shrink toward
+   * borders, grow back to full size returning to centre). Composes with any
+   * active character effect (multiplied into its scaleY).
    */
   borderScaleEnabled: boolean;
-  /** 0..1 — extra scale applied at the literal canvas edge (e.g. 0.3 → 1.3× at edge). */
+  /** 0..1 — amount letters shrink at the literal canvas edge (e.g. 0.3 → 0.7× at edge). */
   borderScaleAmplitude: number;
   // Debug
   showTokenBounds: boolean;
