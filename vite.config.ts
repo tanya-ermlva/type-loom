@@ -24,6 +24,8 @@ export default defineConfig({
         fieldDither: resolve(__dirname, 'prototypes/field-dither/index.html'),
         // Pulse: 2-line text pulsing between layout states with per-line bg
         pulse: resolve(__dirname, 'prototypes/pulse/index.html'),
+        // Stack: vertical infinite scroll of pulse-atoms, synced phase per atom
+        stack: resolve(__dirname, 'prototypes/stack/index.html'),
         // Prototypes hub: static landing page linking to every experiment
         prototypesIndex: resolve(__dirname, 'prototypes/index.html'),
       },
