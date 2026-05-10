@@ -123,8 +123,9 @@ export default function App() {
 
   return (
     <div style={{
-      minHeight: '100vh', display: 'flex', flexDirection: 'column',
+      height: '100vh', display: 'flex', flexDirection: 'column',
       background: '#0a0a0a', color: '#e4e4e7',
+      overflow: 'hidden',
     }}>
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
         <div style={{
