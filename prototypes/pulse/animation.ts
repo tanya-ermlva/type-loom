@@ -1,4 +1,66 @@
-import type { EasingMode } from './store';
+import type { CharacterEffect, EasingMode } from './store';
+
+/** Per-letter transformation result. dx/dy are pixels; rotate is degrees; scaleY is a multiplier. */
+export interface CharacterDelta {
+  dx: number;
+  dy: number;
+  rotate: number;
+  scaleY: number;
+}
+
+const NEUTRAL: CharacterDelta = { dx: 0, dy: 0, rotate: 0, scaleY: 1 };
+
+/**
+ * Per-letter transformation for a given character within a token.
+ *
+ * @param effect      which visual effect to apply
+ * @param charIdx     index of this character in the token
+ * @param totalChars  total number of characters in the token
+ * @param localProg   0..1 progress within this character's stagger window
+ * @param amplitude   strength of the effect (px for translation, degrees for rotate, factor for scale)
+ *
+ * The effect is enveloped via sin(localProg·π) so each character returns to neutral
+ * at the start and end of its window — the cycle reads as a smooth ripple.
+ */
+export function characterEffect(
+  effect: CharacterEffect,
+  charIdx: number,
+  totalChars: number,
+  localProg: number,
+  amplitude: number,
+): CharacterDelta {
+  if (effect === 'none' || amplitude === 0 || totalChars <= 0) return NEUTRAL;
+  const envelope = Math.sin(localProg * Math.PI); // 0 → 1 → 0 across the window
+  const denom = Math.max(1, totalChars - 1);
+
+  switch (effect) {
+    case 'bow': {
+      // Word arches: y offset shaped like sin(π · charIdx/N)
+      const arcShape = Math.sin((charIdx / denom) * Math.PI);
+      return { dx: 0, dy: -amplitude * arcShape * envelope, rotate: 0, scaleY: 1 };
+    }
+    case 'fan': {
+      // Each char rotates, sign opposite on each side of word centre
+      const center = denom / 2;
+      const offset = charIdx - center;
+      const angle = center > 0 ? (offset / center) * amplitude : 0;
+      return { dx: 0, dy: 0, rotate: angle * envelope, scaleY: 1 };
+    }
+    case 'stretch': {
+      // Vertical scale pulses through 1 + amplitude/100 (amplitude treated as percent)
+      const factor = 1 + (amplitude / 100) * envelope;
+      return { dx: 0, dy: 0, rotate: 0, scaleY: factor };
+    }
+    case 'wave': {
+      // Continuous sine wave that travels through the word; localProg drives phase
+      const phase = (charIdx / denom) * Math.PI * 2;
+      const wave = Math.sin(phase + localProg * Math.PI * 2);
+      return { dx: 0, dy: -amplitude * wave, rotate: 0, scaleY: 1 };
+    }
+    default:
+      return NEUTRAL;
+  }
+}
 
 export const easings: Record<EasingMode, (t: number) => number> = {
   linear: (t) => t,

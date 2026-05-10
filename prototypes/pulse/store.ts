@@ -41,6 +41,8 @@ export type DirectionMode = 'ping-pong' | 'one-way' | 'freeze-A' | 'freeze-B';
 
 export type BgFillMode = 'continuous' | 'per-token';
 
+export type CharacterEffect = 'none' | 'bow' | 'fan' | 'stretch' | 'wave';
+
 export interface Composition {
   // Content
   lines: Line[];
@@ -83,6 +85,11 @@ export interface Composition {
   jitterX: number;
   jitterY: number;
   jitterSeed: number;
+  // Character-level animation (per-letter effects, layered on top of token motion).
+  characterStaggerEnabled: boolean;
+  characterStagger: number;       // 0..0.5, per-character stagger window
+  characterEffect: CharacterEffect;
+  characterAmplitude: number;     // strength of the effect (px or degrees, depending on mode)
   // Debug
   showTokenBounds: boolean;
   showLineBounds: boolean;
@@ -134,6 +141,10 @@ export const DEFAULT_COMPOSITION: Composition = {
   jitterX: 0,
   jitterY: 0,
   jitterSeed: 1,
+  characterStaggerEnabled: false,
+  characterStagger: 0.3,
+  characterEffect: 'bow',
+  characterAmplitude: 30,
   showTokenBounds: false,
   showLineBounds: false,
   showCanvasGrid: false,

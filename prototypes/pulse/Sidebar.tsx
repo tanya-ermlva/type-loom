@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { useStore } from './store';
-import type { AlignmentMode, BgFillMode, DirectionMode, EasingMode } from './store';
+import type { AlignmentMode, BgFillMode, CharacterEffect, DirectionMode, EasingMode } from './store';
 
 const EASING_OPTIONS: EasingMode[] = [
   'linear', 'easeIn', 'easeOut', 'easeInOut',
@@ -25,6 +25,7 @@ export function Sidebar() {
       <TypographySection />
       <LayoutSection />
       <AnimationCharacterSection />
+      <CharacterAnimationSection />
       <RandomSection />
       <ColorsSection />
       <TextSection />
@@ -199,6 +200,49 @@ function AnimationCharacterSection() {
         onChange={(v) => update({ perLineOffset: v })} format={(v) => v.toFixed(2)} />
       <Slider label="Bg lag" value={c.bgLag} min={0} max={0.3} step={0.01}
         onChange={(v) => update({ bgLag: v })} format={(v) => v.toFixed(2)} />
+    </Section>
+  );
+}
+
+const CHARACTER_EFFECT_OPTIONS: CharacterEffect[] = ['none', 'bow', 'fan', 'stretch', 'wave'];
+
+function CharacterAnimationSection() {
+  const c = useStore((s) => s.composition);
+  const update = useStore((s) => s.updateComposition);
+
+  return (
+    <Section title="Character animation">
+      <label style={{
+        display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8,
+        cursor: 'pointer', fontSize: 11,
+      }}>
+        <input type="checkbox" checked={!!c.characterStaggerEnabled}
+          onChange={(e) => update({ characterStaggerEnabled: e.target.checked })} />
+        <span>Enable per-character animation</span>
+      </label>
+      {c.characterStaggerEnabled && (
+        <>
+          <Field label="Effect">
+            <select value={c.characterEffect ?? 'bow'}
+              onChange={(e) => update({ characterEffect: e.target.value as CharacterEffect })}
+              style={selectStyle}>
+              {CHARACTER_EFFECT_OPTIONS.map((m) => <option key={m} value={m}>{m}</option>)}
+            </select>
+          </Field>
+          <Slider label="Char stagger" value={c.characterStagger ?? 0} min={0} max={0.5} step={0.01}
+            onChange={(v) => update({ characterStagger: v })} format={(v) => v.toFixed(2)} />
+          <Slider label="Amplitude" value={c.characterAmplitude ?? 0} min={0} max={120} step={1}
+            onChange={(v) => update({ characterAmplitude: v })} />
+          <p style={{ fontSize: 10, color: '#71717a', lineHeight: 1.5, margin: '6px 0 0' }}>
+            Each character runs its own staggered window inside the token. Effect grows
+            and returns to neutral via a sine envelope per window.{' '}
+            <b style={{ color: '#a1a1aa' }}>bow</b> = arc up,{' '}
+            <b style={{ color: '#a1a1aa' }}>fan</b> = rotate around centre,{' '}
+            <b style={{ color: '#a1a1aa' }}>stretch</b> = scaleY (amplitude is %),{' '}
+            <b style={{ color: '#a1a1aa' }}>wave</b> = traveling sine on y.
+          </p>
+        </>
+      )}
     </Section>
   );
 }

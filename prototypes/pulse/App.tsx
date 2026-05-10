@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useStore } from './store';
 import { layoutLine, type TokenPosition, type TokenWidth } from './layout';
 import { useTokenWidths } from './tokens';
-import { easings, jitterFor, lerp, tokenProgress } from './animation';
+import { characterEffect, easings, jitterFor, lerp, tokenProgress } from './animation';
 import { Sidebar } from './Sidebar';
 
 export default function App() {
@@ -16,6 +16,7 @@ export default function App() {
     fontFamily, fontSize, letterSpacingPct,
     lineHeight, interLineGap, tokenSpacingTight,
     edgePadding, stateA, stateB, stateC, useStateC, bgBoundsModes,
+    characterStaggerEnabled, characterStagger, characterEffect: charEffectMode, characterAmplitude,
     loopDuration, easing, direction, phaseOffset,
     perTokenStagger, perLineOffset, bgLag,
     jitterX, jitterY, jitterSeed,
@@ -33,7 +34,7 @@ export default function App() {
     const opts = { canvasWidth, edgePadding, tokenSpacingTight, scatterSeed: jitterSeed };
     return lines.map((line, li) => {
       const tw: TokenWidth[] = line.tokens.map((t) => ({
-        id: t.id, width: widths.get(t.id) ?? 0,
+        id: t.id, width: widths.get(t.id)?.width ?? 0,
       }));
       return {
         a: layoutLine(tw, stateA.alignments[li] ?? 'centered', opts),
@@ -77,7 +78,7 @@ export default function App() {
   }, [playing, loopDuration, phaseOffset, direction, useStateC]);
 
   // Per-line interpolated positions.
-  const renderedLayouts: { positions: (TokenPosition & { yJ?: number })[]; bgPositions: TokenPosition[] }[] | null =
+  const renderedLayouts: { positions: (TokenPosition & { yJ?: number; eased?: number })[]; bgPositions: TokenPosition[] }[] | null =
     useMemo(() => {
       if (!layoutsABC) return null;
       return layoutsABC.map(({ a, b, c }, li) => {
@@ -111,7 +112,8 @@ export default function App() {
           const scaleX = lerp(fromPos.scaleX ?? 1, toPos.scaleX ?? 1, eased);
           const yJ = jitterY > 0 ? jitterFor(jitterSeed + 1000 * li, ti) * jitterY : 0;
           const xJ = jitterX > 0 ? jitterFor(jitterSeed + li, ti) * jitterX : 0;
-          return { id: fromPos.id, x: x + xJ, width, scaleX, yJ };
+          // Pass `eased` through so the render layer can drive per-character effects.
+          return { id: fromPos.id, x: x + xJ, width, scaleX, yJ, eased };
         });
 
         const tokens = interp('tokens');
@@ -167,13 +169,61 @@ export default function App() {
                 )}
                 {lines[li].tokens.map((tok, ti) => {
                   const p = row.positions[ti];
+                  const tokY = baselineY + (p.yJ ?? 0);
                   // Apply textLength only when 'stretched' alignment is contributing (scaleX != 1).
-                  // Otherwise omit it so SVG renders text at its natural metrics.
                   const useStretch = (p.scaleX ?? 1) !== 1 && p.width > 0;
+                  // Per-character path: requires letter metrics + char effects enabled.
+                  const tokMetrics = widths?.get(tok.id);
+                  const renderPerChar =
+                    characterStaggerEnabled &&
+                    charEffectMode !== 'none' &&
+                    tokMetrics &&
+                    tokMetrics.letters.length > 0;
+
+                  if (renderPerChar) {
+                    const totalChars = tokMetrics.letters.length;
+                    const segLocal = p.eased ?? 0;
+                    return (
+                      <g key={tok.id}>
+                        {Array.from(tok.text).map((ch, ci) => {
+                          const lm = tokMetrics.letters[ci];
+                          if (!lm) return null;
+                          // Each character runs its own staggered window inside the token.
+                          const charLocal = tokenProgress(segLocal, characterStagger, totalChars, ci);
+                          const eff = characterEffect(charEffectMode, ci, totalChars, charLocal, characterAmplitude);
+                          const cx = p.x + lm.offsetX;
+                          const cy = tokY;
+                          // Build SVG transform string: rotate around glyph centre, then optional scaleY.
+                          const cxCenter = cx + lm.width / 2;
+                          const transforms: string[] = [];
+                          if (eff.rotate !== 0) {
+                            transforms.push(`rotate(${eff.rotate} ${cxCenter} ${cy})`);
+                          }
+                          if (eff.scaleY !== 1) {
+                            transforms.push(
+                              `translate(${cxCenter} ${cy}) scale(1 ${eff.scaleY}) translate(${-cxCenter} ${-cy})`,
+                            );
+                          }
+                          const transform = transforms.length ? transforms.join(' ') : undefined;
+                          return (
+                            <text key={`${tok.id}-${ci}`}
+                              x={cx + eff.dx}
+                              y={cy + eff.dy}
+                              fontFamily={fontFamily} fontSize={fontSize}
+                              fill={textColor}
+                              style={{ dominantBaseline: 'alphabetic' }}
+                              transform={transform}
+                            >{ch}</text>
+                          );
+                        })}
+                      </g>
+                    );
+                  }
+
                   return (
                     <text
                       key={tok.id}
-                      x={p.x} y={baselineY + (p.yJ ?? 0)}
+                      x={p.x} y={tokY}
                       fontFamily={fontFamily} fontSize={fontSize}
                       letterSpacing={letterSpacingPx} fill={textColor}
                       style={{ dominantBaseline: 'alphabetic' }}
