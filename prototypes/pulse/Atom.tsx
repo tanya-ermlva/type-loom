@@ -76,6 +76,7 @@ export function Atom({
     perTokenStagger, perLineOffset, bgLag,
     jitterX, jitterY, jitterSeed,
     autoFitVertical, autoFitPadding,
+    tokenBoundsPaddingX, tokenBoundsPaddingY,
     trailsEnabled, trailCount, trailLagStep,
     showTokenBounds, showLineBounds, showCanvasGrid,
   } = composition;
@@ -262,6 +263,12 @@ export function Atom({
         const bgY = topOffset + li * (lineHeight + interLineGap);
         const baselineY = bgY + lineHeight * 0.8;
         const fillMode = bgBoundsModes?.[li] ?? 'continuous';
+        // Token-bounds padding extends every bg rect (per-token, continuous,
+        // trails, debug strokes) symmetrically. 0 = no change (default).
+        const pX = tokenBoundsPaddingX;
+        const pY = tokenBoundsPaddingY;
+        const padY = bgY - pY;
+        const padH = lineHeight + 2 * pY;
         return (
           <g key={lines[li].id}>
             {/* Trails: ALWAYS per-token, regardless of fillMode. Each trail =
@@ -283,16 +290,16 @@ export function Atom({
                 if (opacity <= 0) return null; // skip the literally-invisible trail
                 return trailPos.map((p) => (
                   <rect key={`trail-${li}-${ti}-${p.id}`}
-                    x={p.x} y={bgY} width={p.width} height={lineHeight}
+                    x={p.x - pX} y={padY} width={p.width + 2 * pX} height={padH}
                     fill={blockColor} opacity={opacity} />
                 ));
               })}
             {fillMode === 'continuous' ? (
-              <rect x={bgX} y={bgY} width={bgRight - bgX} height={lineHeight} fill={blockColor} />
+              <rect x={bgX - pX} y={padY} width={bgRight - bgX + 2 * pX} height={padH} fill={blockColor} />
             ) : (
               row.bgPositions.map((p) => (
                 <rect key={`bg-${p.id}`}
-                  x={p.x} y={bgY} width={p.width} height={lineHeight} fill={blockColor} />
+                  x={p.x - pX} y={padY} width={p.width + 2 * pX} height={padH} fill={blockColor} />
               ))
             )}
             {lines[li].tokens.map((tok, ti) => {
@@ -364,14 +371,14 @@ export function Atom({
               );
             })}
             {debugOn && showLineBounds && (
-              <rect x={bgX} y={bgY} width={bgRight - bgX} height={lineHeight}
+              <rect x={bgX - pX} y={padY} width={bgRight - bgX + 2 * pX} height={padH}
                 fill="none" stroke="#ff00ff" strokeWidth={1.5} pointerEvents="none" />
             )}
             {debugOn && showTokenBounds && lines[li].tokens.map((tok, ti) => {
               const p = row.positions[ti];
               return (
                 <rect key={`tb-${tok.id}`}
-                  x={p.x} y={bgY} width={p.width} height={lineHeight}
+                  x={p.x - pX} y={padY} width={p.width + 2 * pX} height={padH}
                   fill="none" stroke="#00ffff" strokeWidth={1} pointerEvents="none" />
               );
             })}

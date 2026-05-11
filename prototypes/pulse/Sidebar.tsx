@@ -193,6 +193,12 @@ function TypographySection() {
       )}
       <Slider label="Token sp" value={c.tokenSpacingTight} min={0} max={80} step={1}
         onChange={(v) => update({ tokenSpacingTight: v })} />
+      <Slider label="Bounds X" value={c.tokenBoundsPaddingX} min={-30} max={60} step={1}
+        onChange={(v) => update({ tokenBoundsPaddingX: v })}
+        format={(v) => `${v} px`} />
+      <Slider label="Bounds Y" value={c.tokenBoundsPaddingY} min={-30} max={60} step={1}
+        onChange={(v) => update({ tokenBoundsPaddingY: v })}
+        format={(v) => `${v} px`} />
     </Section>
   );
 }

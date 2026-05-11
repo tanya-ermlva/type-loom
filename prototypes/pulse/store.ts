@@ -146,6 +146,11 @@ export interface Composition {
   autoFitVertical: boolean;
   /** 0..0.25, fraction of canvasHeight reserved as empty space (split top + bottom). */
   autoFitPadding: number;
+  /** Extends each token's bg rect by this many px on the left + right. Also pads
+   *  the continuous-fill line rect on both ends. */
+  tokenBoundsPaddingX: number;
+  /** Extends each token's bg rect by this many px above + below the lineHeight band. */
+  tokenBoundsPaddingY: number;
   // Debug
   showTokenBounds: boolean;
   showLineBounds: boolean;
@@ -207,6 +212,8 @@ export const DEFAULT_COMPOSITION: Composition = {
   characterAmplitude: 30,
   autoFitVertical: true,
   autoFitPadding: 0.05,
+  tokenBoundsPaddingX: 0,
+  tokenBoundsPaddingY: 0,
   showTokenBounds: false,
   showLineBounds: false,
   showCanvasGrid: false,
