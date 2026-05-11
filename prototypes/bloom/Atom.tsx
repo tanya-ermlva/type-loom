@@ -1,23 +1,26 @@
 /**
- * Bloom atom — two SVG circles centered at the same point:
- *   1. The DOT (rendered first) — the permanent identity. Stays visible
- *      across both states; never shrinks or fades by default.
- *   2. The OUTLINE (rendered on top) — a stroked circle whose geometric
- *      radius AND stroke width both grow from State A → State B. With a
- *      wide enough stroke, it visually covers the dot and extends beyond.
+ * Bloom atom — two filled SVG circles centered at the same point that swap:
+ *   1. BIG (rendered first, behind) — invisible at rest, grows past the
+ *      small's radius and becomes the dominant visual at full activity.
+ *   2. SMALL (rendered on top) — fully visible at rest, shrinks toward 0
+ *      as the big takes over.
  *
  * The atom owns its preview RAF: when `playing` is true it loops `g`
  * 0 → 1 → 0 over `cycleDuration` seconds (ping-pong). When `gOverride` is
  * supplied, it bypasses the loop and uses that value verbatim — that's how
- * the manual slider works and how the bloom-stack will pipe per-atom
- * proximity-derived `g` values down without owning RAF.
+ * the manual slider works and how the bloom-stack pipes per-atom
+ * field-strength values down without owning RAF.
  */
 import { useEffect, useRef, useState } from 'react';
-import type { BloomState, BlendMode } from './store';
+import type { BloomState, BlendMode, CircleTransition } from './store';
+import { easings } from '../pulse/animation';
 
 interface Props {
   stateA: BloomState;
   stateB: BloomState;
+  /** Per-circle transition shape — speed (via range) + easing curve. */
+  smallTransition: CircleTransition;
+  bigTransition: CircleTransition;
   /** When true and gOverride is null, run the auto A↔B loop. */
   playing: boolean;
   cycleDuration: number;
@@ -55,10 +58,29 @@ function lerpColor(a: string, b: string, t: number): string {
   return rgbToHex(ar + (br - ar) * t, ag + (bg - ag) * t, ab + (bb - ab) * t);
 }
 
+const clamp01 = (n: number) => (n < 0 ? 0 : n > 1 ? 1 : n);
+
+/**
+ * Map the bloom's overall g into ONE circle's progress 0..1.
+ *
+ *   g < start          → 0 (circle pinned to State A)
+ *   start ≤ g ≤ end    → ease(localProgress)
+ *   g > end            → 1 (circle pinned to State B)
+ *
+ * Degenerate case start ≥ end: instant flip at g >= start (mimics a step).
+ */
+export function applyTransition(g: number, t: CircleTransition): number {
+  if (t.end <= t.start) return g >= t.start ? 1 : 0;
+  const local = clamp01((g - t.start) / (t.end - t.start));
+  if (t.easing === 'cubic-bezier') return local; // bezier needs a curve param we don't pipe here
+  const fn = easings[t.easing] ?? easings.linear;
+  return fn(local);
+}
+
 // ---------- Component ----------
 
 export function Atom({
-  stateA, stateB, playing, cycleDuration,
+  stateA, stateB, smallTransition, bigTransition, playing, cycleDuration,
   gOverride = null, blendMode = 'normal', bgColor = '#FAFAFA', size = 200,
 }: Props) {
   const [g, setG] = useState(0);
@@ -91,14 +113,19 @@ export function Atom({
   const cx = size / 2;
   const cy = size / 2;
 
-  const dotR = lerp(stateA.dotRadius, stateB.dotRadius, g);
-  const dotColor = lerpColor(stateA.dotColor, stateB.dotColor, g);
-  const dotOpacity = lerp(stateA.dotOpacity, stateB.dotOpacity, g);
+  // Each circle gets its own local progress through A → B: a [start, end]
+  // sub-range of g plus an easing curve. Outside that range the circle
+  // pins to A (below start) or B (above end).
+  const gSmall = applyTransition(g, smallTransition);
+  const gBig = applyTransition(g, bigTransition);
 
-  const outlineR = lerp(stateA.outlineRadius, stateB.outlineRadius, g);
-  const outlineW = lerp(stateA.outlineStroke, stateB.outlineStroke, g);
-  const outlineColor = lerpColor(stateA.outlineColor, stateB.outlineColor, g);
-  const outlineOpacity = lerp(stateA.outlineOpacity, stateB.outlineOpacity, g);
+  const smallR = lerp(stateA.smallRadius, stateB.smallRadius, gSmall);
+  const smallColor = lerpColor(stateA.smallColor, stateB.smallColor, gSmall);
+  const smallOpacity = lerp(stateA.smallOpacity, stateB.smallOpacity, gSmall);
+
+  const bigR = lerp(stateA.bigRadius, stateB.bigRadius, gBig);
+  const bigColor = lerpColor(stateA.bigColor, stateB.bigColor, gBig);
+  const bigOpacity = lerp(stateA.bigOpacity, stateB.bigOpacity, gBig);
 
   return (
     <svg
@@ -108,24 +135,23 @@ export function Atom({
       style={{ background: bgColor, display: 'block' }}
     >
       <g style={{ mixBlendMode: blendMode as React.CSSProperties['mixBlendMode'] }}>
-        {/* Dot — the permanent identity. Drawn first (under the outline). */}
-        {dotOpacity > 0.001 && (
+        {/* Big circle — drawn first so it sits BEHIND the small. Invisible at
+            rest (radius 0), grows past the small at active. */}
+        {bigOpacity > 0.001 && bigR > 0.001 && (
           <circle
-            cx={cx} cy={cy} r={Math.max(0, dotR)}
-            fill={dotColor}
-            opacity={dotOpacity}
+            cx={cx} cy={cy} r={Math.max(0, bigR)}
+            fill={bigColor}
+            opacity={bigOpacity}
           />
         )}
 
-        {/* Outline — the growing stroke. Drawn on top so a thick stroke
-            visually covers the dot. */}
-        {outlineOpacity > 0.001 && outlineW > 0.001 && (
+        {/* Small circle — drawn on top. Full size at rest, shrinks to 0
+            as the big takes over. */}
+        {smallOpacity > 0.001 && smallR > 0.001 && (
           <circle
-            cx={cx} cy={cy} r={Math.max(0, outlineR)}
-            fill="none"
-            stroke={outlineColor}
-            strokeWidth={Math.max(0, outlineW)}
-            opacity={outlineOpacity}
+            cx={cx} cy={cy} r={Math.max(0, smallR)}
+            fill={smallColor}
+            opacity={smallOpacity}
           />
         )}
       </g>

@@ -31,8 +31,9 @@ const PAD_BOTTOM = H - (CONTENT.minY + CONTENT.height); // 302.5 — natural bot
 export interface Composition {
   id: CompositionId;
   label: string;
-  /** Recommended hoverRadius for this layout (viewBox units). */
-  defaultHoverRadius: number;
+  /** Recommended cursor reach for this layout (viewBox units). Used to
+   *  seed both reachX and reachY when switching into this composition. */
+  defaultReach: number;
   /** Recommended gap to seed when the user switches into this layout. */
   defaultGap: number;
   /** False for layouts that ignore gap (single DFD has nothing to space against). */
@@ -43,15 +44,15 @@ export interface Composition {
 
 interface CompositionMeta {
   label: string;
-  defaultHoverRadius: number;
+  defaultReach: number;
   defaultGap: number;
   usesGap: boolean;
 }
 
 const META: Record<CompositionId, CompositionMeta> = {
-  'single':       { label: 'Single DFD',     defaultHoverRadius: 250, defaultGap: 0,   usesGap: false },
-  'triple-stack': { label: '3 DFDs stacked', defaultHoverRadius: 250, defaultGap: 200, usesGap: true  },
-  'grid-3x5':     { label: 'Grid · 3×5 DFDs', defaultHoverRadius: 200, defaultGap: 150, usesGap: true  },
+  'single':       { label: 'Single DFD',     defaultReach: 250, defaultGap: 0,   usesGap: false },
+  'triple-stack': { label: '3 DFDs stacked', defaultReach: 250, defaultGap: 200, usesGap: true  },
+  'grid-3x5':     { label: 'Grid · 3×5 DFDs', defaultReach: 200, defaultGap: 150, usesGap: true  },
 };
 
 /** Stable list for the sidebar dropdown — order matters for UI. */

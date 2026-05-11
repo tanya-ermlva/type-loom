@@ -15,8 +15,9 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { useStore as useStackStore } from './store';
+import type { FalloffKind } from './store';
 import { useStore as useBloomStore } from '../bloom/store';
-import { easings } from '../pulse/animation';
+import { applyTransition } from '../bloom/Atom';
 import { getComposition } from '../bloom/compositions';
 import { PrototypeNav } from '../bloom/PrototypeNav';
 
@@ -44,20 +45,75 @@ function lerpColor(a: string, b: string, t: number): string {
   return rgbToHex(ar + (br - ar) * t, ag + (bg - ag) * t, ab + (bb - ab) * t);
 }
 
-const clamp01 = (n: number) => (n < 0 ? 0 : n > 1 ? 1 : n);
+/**
+ * Falloff curves from prototypes/compress's force-field model.
+ * Input: normalized distance d ∈ [0, 1] (0 = cursor, 1 = ellipse edge).
+ * Output: field strength ∈ [0, 1] (1 = full bloom, 0 = at rest).
+ */
+function falloff(d: number, kind: FalloffKind): number {
+  if (d <= 0) return 1;
+  if (d >= 1) return 0;
+  switch (kind) {
+    case 'linear':
+      return 1 - d;
+    case 'smoothstep': {
+      const t = 1 - d;
+      return t * t * (3 - 2 * t);
+    }
+    case 'smootherstep': {
+      const t = 1 - d;
+      return t * t * t * (t * (t * 6 - 15) + 10);
+    }
+    case 'gaussian': {
+      // sigma=0.4 → f(0)=1, f(1)≈0.018. Tight peak, long tail.
+      const sigma = 0.4;
+      return Math.exp(-(d * d) / (2 * sigma * sigma));
+    }
+    case 'constant':
+      return 1;
+  }
+}
+
+/**
+ * Per-atom field strength given the cursor and the elliptical reach.
+ *
+ * Ellipse-normalized distance: d² = (Δx / sx)² + (Δy / sy)². d=0 at the
+ * cursor centre, d=1 anywhere on the ellipse edge. Stretching sx and sy
+ * asymmetrically shapes the field into a horizontal or vertical band
+ * without any special-case "directional" mode.
+ */
+function fieldStrength(
+  atomX: number, atomY: number,
+  cursorX: number, cursorY: number,
+  reachX: number, reachY: number,
+  kind: FalloffKind,
+): number {
+  const sx = Math.max(1, reachX);
+  const sy = Math.max(1, reachY);
+  const dx = (atomX - cursorX) / sx;
+  const dy = (atomY - cursorY) / sy;
+  const d = Math.sqrt(dx * dx + dy * dy);
+  return falloff(d, kind);
+}
 
 // ---------- Component ----------
 
 export default function App() {
   const stateA = useBloomStore((s) => s.stateA);
   const stateB = useBloomStore((s) => s.stateB);
+  const smallTransition = useBloomStore((s) => s.smallTransition);
+  const bigTransition = useBloomStore((s) => s.bigTransition);
   const blendMode = useBloomStore((s) => s.blendMode);
   const bgColor = useBloomStore((s) => s.bgColor);
 
   const compositionId = useStackStore((s) => s.composition);
-  const compositionGap = useStackStore((s) => s.compositionGap);
-  const hoverRadius = useStackStore((s) => s.hoverRadius);
-  const falloffEasing = useStackStore((s) => s.falloffEasing);
+  // Per-composition snapshot — reach + gap that follow the active layout.
+  const snapshot = useStackStore((s) => s.snapshots[s.composition]);
+  const compositionGap = snapshot.compositionGap;
+  const reachX = snapshot.reachX;
+  const reachY = snapshot.reachY;
+  const fieldFalloff = useStackStore((s) => s.fieldFalloff);
+  const letterOverrides = useStackStore((s) => s.letterOverrides);
 
   // Resolve the composition each render — cheap. Gap reshapes the viewBox
   // and the position list together (see prototypes/bloom/compositions.ts).
@@ -110,11 +166,6 @@ export default function App() {
     };
   }, []);
 
-  // Resolve the easing curve once per render (cheap; small lookup).
-  const easeFn = falloffEasing === 'cubic-bezier'
-    ? easings.linear  // bezier curves need a curve param we don't pass here
-    : easings[falloffEasing] ?? easings.linear;
-
   return (
     <div style={{
       height: '100vh', display: 'flex', overflow: 'hidden',
@@ -144,37 +195,50 @@ export default function App() {
         >
           <g style={{ mixBlendMode: blendMode as React.CSSProperties['mixBlendMode'] }}>
             {composition.positions.map((p, i) => {
-              // Per-atom growth value from cursor proximity.
-              let g = 0;
-              if (mouse) {
-                const d = Math.hypot(p.cx - mouse.x, p.cy - mouse.y);
-                const proximity = clamp01(1 - d / Math.max(1, hoverRadius));
-                g = easeFn(proximity);
-              }
+              // Per-atom growth value from the cursor's elliptical field.
+              // Reach X / Reach Y can differ → stretches the ellipse into a
+              // horizontal or vertical band without any directional flag.
+              const g = mouse
+                ? fieldStrength(p.cx, p.cy, mouse.x, mouse.y, reachX, reachY, fieldFalloff)
+                : 0;
 
-              const dotR = lerp(stateA.dotRadius, stateB.dotRadius, g);
-              const dotColor = lerpColor(stateA.dotColor, stateB.dotColor, g);
-              const dotOpacity = lerp(stateA.dotOpacity, stateB.dotOpacity, g);
+              // Per-letter colour override resolution: a non-null override
+              // replaces BOTH State A and State B's colour for that letter,
+              // so the lerp returns that single colour at any g. Other
+              // params (radii, opacities) always lerp globally.
+              const override = letterOverrides[p.letter];
+              const smallColorA = override.smallColor ?? stateA.smallColor;
+              const smallColorB = override.smallColor ?? stateB.smallColor;
+              const bigColorA = override.bigColor ?? stateA.bigColor;
+              const bigColorB = override.bigColor ?? stateB.bigColor;
 
-              const outlineR = lerp(stateA.outlineRadius, stateB.outlineRadius, g);
-              const outlineW = lerp(stateA.outlineStroke, stateB.outlineStroke, g);
-              const outlineColor = lerpColor(stateA.outlineColor, stateB.outlineColor, g);
-              const outlineOpacity = lerp(stateA.outlineOpacity, stateB.outlineOpacity, g);
+              // Per-circle remap + ease: each circle gets its own progress
+              // through A → B based on its [start, end, easing] config.
+              const gSmall = applyTransition(g, smallTransition);
+              const gBig = applyTransition(g, bigTransition);
+
+              const smallR = lerp(stateA.smallRadius, stateB.smallRadius, gSmall);
+              const smallColor = lerpColor(smallColorA, smallColorB, gSmall);
+              const smallOpacity = lerp(stateA.smallOpacity, stateB.smallOpacity, gSmall);
+
+              const bigR = lerp(stateA.bigRadius, stateB.bigRadius, gBig);
+              const bigColor = lerpColor(bigColorA, bigColorB, gBig);
+              const bigOpacity = lerp(stateA.bigOpacity, stateB.bigOpacity, gBig);
 
               return (
                 <g key={i}>
-                  {dotOpacity > 0.001 && (
+                  {/* Big first — sits behind the small. */}
+                  {bigOpacity > 0.001 && bigR > 0.001 && (
                     <circle
-                      cx={p.cx} cy={p.cy} r={Math.max(0, dotR)}
-                      fill={dotColor} opacity={dotOpacity}
+                      cx={p.cx} cy={p.cy} r={Math.max(0, bigR)}
+                      fill={bigColor} opacity={bigOpacity}
                     />
                   )}
-                  {outlineOpacity > 0.001 && outlineW > 0.001 && (
+                  {/* Small on top. */}
+                  {smallOpacity > 0.001 && smallR > 0.001 && (
                     <circle
-                      cx={p.cx} cy={p.cy} r={Math.max(0, outlineR)}
-                      fill="none" stroke={outlineColor}
-                      strokeWidth={Math.max(0, outlineW)}
-                      opacity={outlineOpacity}
+                      cx={p.cx} cy={p.cy} r={Math.max(0, smallR)}
+                      fill={smallColor} opacity={smallOpacity}
                     />
                   )}
                 </g>

@@ -18,6 +18,8 @@ export default function App() {
   const setPlaying = useStore((s) => s.setPlaying);
   const stateA = useStore((s) => s.stateA);
   const stateB = useStore((s) => s.stateB);
+  const smallTransition = useStore((s) => s.smallTransition);
+  const bigTransition = useStore((s) => s.bigTransition);
   const blendMode = useStore((s) => s.blendMode);
   const bgColor = useStore((s) => s.bgColor);
 
@@ -44,6 +46,8 @@ export default function App() {
           <Atom
             stateA={stateA}
             stateB={stateB}
+            smallTransition={smallTransition}
+            bigTransition={bigTransition}
             playing={playing}
             cycleDuration={cycleDuration}
             gOverride={playing ? null : gManual}

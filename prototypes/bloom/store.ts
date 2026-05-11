@@ -1,44 +1,63 @@
 /**
  * Bloom store — single atom prototype.
  *
- * The atom is two SVG circles centered at the same point:
- *   1. DOT — the permanent identity. Stays put across both states; never
- *      shrinks or fades. The wireframe lime dot you'd see on the page.
- *   2. OUTLINE — the temporal element. Stroked circle whose geometric radius
- *      AND stroke width both grow from State A → State B. With a wide enough
- *      stroke, the outline visually covers the dot AND extends beyond it.
+ * The atom is two filled SVG circles centered at the same point that swap
+ * roles between rest and active:
+ *   1. SMALL circle — rendered on TOP. At rest it's fully visible (the dot
+ *      you see in the DFD wireframe). It shrinks toward 0 as activity rises.
+ *   2. BIG circle — rendered BEHIND the small. At rest it's hidden (radius 0
+ *      or behind the small). It grows past the small's radius as activity
+ *      rises, becoming the dominant visual at full bloom.
  *
- * State A (rest) and State B (active) each define both circles' fields.
- * A growth value g ∈ [0..1] linearly interpolates every field. The atom view
- * supplies g via a play loop or a manual slider; bloom-stack will supply it
- * via per-atom cursor proximity (atom doesn't know or care which).
+ * State A (rest) and State B (active) each define both circles' radius,
+ * colour, and opacity. A growth value g ∈ [0..1] linearly interpolates every
+ * field — the atom view supplies g via play loop / manual slider, the
+ * bloom-stack supplies it via cursor-field strength.
  */
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import type { EasingMode } from '../pulse/store';
 
 export type BlendMode =
   | 'normal' | 'multiply' | 'screen' | 'overlay'
   | 'difference' | 'lighten' | 'darken';
 
-/** One visual state of the bloom atom. State A and State B share this shape. */
-export interface BloomState {
-  /** Filled dot — the permanent identity at the atom's center. */
-  dotRadius: number;
-  dotColor: string;
-  dotOpacity: number;
-
-  /** Stroked outline circle — what grows to cover the dot + surroundings. */
-  outlineRadius: number;     // geometric radius of the circle the stroke sits on
-  outlineStroke: number;     // stroke width — when ≥ 2×outlineRadius, fills the disc
-  outlineColor: string;
-  outlineOpacity: number;
+/**
+ * Per-circle transition config. Each circle interpolates A → B within its
+ * own [start, end] sub-range of the bloom's growth value g ∈ [0..1].
+ *
+ *   start: the g value at which this circle BEGINS transitioning (pins to A below)
+ *   end:   the g value at which this circle REACHES B (pins to B above)
+ *   easing: the curve applied to the local progress (g remapped into [0,1] inside the range)
+ *
+ * Defaults [0, 1, linear] reproduce the simple linear lerp. Narrower ranges
+ * = faster transitions ("speed"). Non-overlapping ranges = sequenced handoff
+ * (e.g. small.end = big.start = 0.5 → small fully shrinks before big grows).
+ */
+export interface CircleTransition {
+  start: number;
+  end: number;
+  easing: EasingMode;
 }
 
-/** Which fields cascade A → B when State A changes (see updateStateA). */
-const CASCADE_KEYS: ReadonlyArray<keyof BloomState> = ['dotColor', 'outlineColor'];
+/** One visual state of the bloom atom. State A and State B share this shape. */
+export interface BloomState {
+  /** Small circle — rendered on top. The dot you see at rest. */
+  smallRadius: number;
+  smallColor: string;
+  smallOpacity: number;
+
+  /** Big circle — rendered behind the small. Hidden at rest, dominant at active. */
+  bigRadius: number;
+  bigColor: string;
+  bigOpacity: number;
+}
+
+/** Colour fields that cascade A → B when State A changes (see updateStateA). */
+const CASCADE_KEYS: ReadonlyArray<keyof BloomState> = ['smallColor', 'bigColor'];
 
 interface Store {
-  // Playback / preview drivers — atom-view only; stack will ignore these.
+  // Playback / preview drivers — atom-view only; stack ignores these.
   playing: boolean;
   cycleDuration: number;     // seconds for one full A → B → A loop
   gManual: number;           // used when paused, so you can scrub by hand
@@ -51,6 +70,10 @@ interface Store {
   stateA: BloomState;
   stateB: BloomState;
 
+  // Per-circle transition shape — speed (via range width) + easing.
+  smallTransition: CircleTransition;
+  bigTransition: CircleTransition;
+
   // Actions.
   setPlaying: (v: boolean) => void;
   setCycleDuration: (v: number) => void;
@@ -59,30 +82,36 @@ interface Store {
   setBlendMode: (v: BlendMode) => void;
   updateStateA: (patch: Partial<BloomState>) => void;
   updateStateB: (patch: Partial<BloomState>) => void;
+  updateSmallTransition: (patch: Partial<CircleTransition>) => void;
+  updateBigTransition: (patch: Partial<CircleTransition>) => void;
   reset: () => void;
 }
 
 // Defaults — match the hand-drawn DFD wireframe (lime on near-white).
-// At rest you see just the dot. At full growth the outline's stroke is
-// thick enough to cover the dot completely and extend past it.
+// At rest you see just the small dot. At full activity the small is gone
+// and the big circle dominates at 4× the rest-dot's size.
 const DEFAULT_A: BloomState = {
-  dotRadius: 8,
-  dotColor: '#CAEE50',
-  dotOpacity: 1,
-  outlineRadius: 8,          // sits at the dot's edge
-  outlineStroke: 0,          // invisible at rest
-  outlineColor: '#CAEE50',   // matches dot by default
-  outlineOpacity: 1,
+  smallRadius: 8,
+  smallColor: '#CAEE50',
+  smallOpacity: 1,
+  bigRadius: 0,              // hidden at rest (radius 0)
+  bigColor: '#CAEE50',       // same colour by default; user can shift via B
+  bigOpacity: 1,
 };
 
 const DEFAULT_B: BloomState = {
-  dotRadius: 8,              // ← unchanged: dot doesn't shrink
-  dotColor: '#CAEE50',       // ← same color as A by default (cascade keeps in sync)
-  dotOpacity: 1,             // ← unchanged: dot doesn't fade
-  outlineRadius: 16,         // outer radius of the visible stroke band: 16 + 32/2 = 32
-  outlineStroke: 32,         // inner edge: 16 − 32/2 = 0 → stroke covers dot & beyond
-  outlineColor: '#CAEE50',   // ← same color as A by default
-  outlineOpacity: 1,
+  smallRadius: 0,            // shrunk to nothing at active
+  smallColor: '#CAEE50',     // ← same colour as A by default (cascade)
+  smallOpacity: 1,
+  bigRadius: 32,             // 4× the rest-dot — dominant visual at active
+  bigColor: '#CAEE50',
+  bigOpacity: 1,
+};
+
+const DEFAULT_TRANSITION: CircleTransition = {
+  start: 0,
+  end: 1,
+  easing: 'linear',
 };
 
 const INITIAL = {
@@ -93,6 +122,8 @@ const INITIAL = {
   blendMode: 'normal' as BlendMode,
   stateA: DEFAULT_A,
   stateB: DEFAULT_B,
+  smallTransition: DEFAULT_TRANSITION,
+  bigTransition: DEFAULT_TRANSITION,
 };
 
 export const useStore = create<Store>()(
@@ -105,12 +136,12 @@ export const useStore = create<Store>()(
       setGManual: (v) => set({ gManual: v }),
       setBgColor: (v) => set({ bgColor: v }),
       setBlendMode: (v) => set({ blendMode: v }),
-      // State A is the master for color: changing A's dotColor or outlineColor
+
+      // State A is the master for colour: changing A's smallColor or bigColor
       // also writes the same value into State B, so the bloom stays one-tone
-      // by default. Other fields (radii, opacities, stroke) DON'T cascade —
-      // those are exactly what should differ between rest and active.
-      // Editing State B never touches State A, so once B is overridden the
-      // user has full control over the active palette.
+      // by default. Other fields (radii, opacities) DON'T cascade — those are
+      // exactly what should differ between rest and active.
+      // Editing State B never touches State A.
       updateStateA: (patch) => set((s) => {
         const cascade: Partial<BloomState> = {};
         for (const k of CASCADE_KEYS) {
@@ -124,18 +155,24 @@ export const useStore = create<Store>()(
         return { stateA: { ...s.stateA, ...patch }, stateB };
       }),
       updateStateB: (patch) => set((s) => ({ stateB: { ...s.stateB, ...patch } })),
+      updateSmallTransition: (patch) => set((s) => ({
+        smallTransition: { ...s.smallTransition, ...patch },
+      })),
+      updateBigTransition: (patch) => set((s) => ({
+        bigTransition: { ...s.bigTransition, ...patch },
+      })),
       reset: () => set({
         stateA: DEFAULT_A, stateB: DEFAULT_B,
+        smallTransition: DEFAULT_TRANSITION,
+        bigTransition: DEFAULT_TRANSITION,
         blendMode: 'normal', bgColor: '#FAFAFA',
       }),
     }),
     {
-      // v4 of the schema — restored split dotColor + outlineColor (v3 had
-      // collapsed them into one), now coupled by an A → B cascade rather
-      // than by sharing a field. Bumping the storage key keeps prototyping
-      // cheap; older shapes (v1 multi-ring, v2 split, v3 single-color) all
-      // become harmless orphan entries.
-      name: 'bloom:state:v4',
+      // v6 — added per-circle CircleTransition (start, end, easing) so the
+      // small and big circles can interpolate at their own speed and curve.
+      // Older shapes are harmless orphan entries.
+      name: 'bloom:state:v6',
       version: 1,
       partialize: (s) => ({
         playing: s.playing,
@@ -145,6 +182,8 @@ export const useStore = create<Store>()(
         blendMode: s.blendMode,
         stateA: s.stateA,
         stateB: s.stateB,
+        smallTransition: s.smallTransition,
+        bigTransition: s.bigTransition,
       }),
     },
   ),

@@ -1,15 +1,16 @@
 /**
- * PrototypeNav — header dropdown for switching between Bloom Atom and
- * Bloom Stack views. Matches the visual style of pulse/PrototypeNav so
- * the hub feels coherent across prototype families.
+ * PrototypeNav — header dropdown for switching between Bloom-family views.
  *
- * Lives in bloom/ so both bloom and bloom-stack can import it via relative
- * path. Each entry knows its URL (relative to /prototypes/) and whether it's
- * clickable; disabled entries appear greyed-out as "coming soon" placeholders.
+ * Mirrors prototypes/pulse/PrototypeNav so the hub feels coherent across
+ * prototype families. Lives in bloom/ so both bloom and bloom-stack can
+ * import it via relative path. Each entry knows its URL (relative to
+ * /prototypes/) and whether it's clickable; disabled entries appear
+ * greyed-out as "coming soon" placeholders that we can wire up later
+ * without touching the consumers.
  */
 import { useEffect, useRef, useState } from 'react';
 
-type View = 'atom' | 'stack';
+type View = 'atom' | 'stack' | 'marquee' | 'polotno';
 
 interface Entry {
   view: View;
@@ -18,8 +19,10 @@ interface Entry {
 }
 
 const ENTRIES: Entry[] = [
-  { view: 'atom',  label: 'Atom',  href: '../bloom/' },
-  { view: 'stack', label: 'Stack', href: '../bloom-stack/' },
+  { view: 'atom',    label: 'Atom',    href: '../bloom/' },
+  { view: 'stack',   label: 'Stack',   href: '../bloom-stack/' },
+  { view: 'marquee', label: 'Marquee', href: null },
+  { view: 'polotno', label: 'Polotno', href: null },
 ];
 
 export function PrototypeNav({ current }: { current: View }) {
@@ -43,13 +46,13 @@ export function PrototypeNav({ current }: { current: View }) {
         onClick={() => setOpen((o) => !o)}
         style={{
           background: 'transparent', border: 0, padding: '4px 8px',
-          color: '#0a0a0a', fontSize: 22, fontWeight: 700,
+          color: '#ffffff', fontSize: 22, fontWeight: 700,
           cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
           letterSpacing: '-0.01em',
         }}
       >
         <span>{currentLabel}</span>
-        <span style={{ fontSize: 12, opacity: 0.65 }}>▼</span>
+        <span style={{ fontSize: 12, opacity: 0.85 }}>▼</span>
       </button>
       {open && (
         <div style={{
@@ -66,7 +69,7 @@ export function PrototypeNav({ current }: { current: View }) {
               fontSize: 18, fontWeight: 600,
               letterSpacing: '-0.01em',
               textDecoration: 'none',
-              color: enabled ? '#71717a' : '#a1a1aa',
+              color: enabled ? '#a1a1aa' : '#52525b',
               cursor: enabled ? 'pointer' : 'not-allowed',
             };
             return enabled ? (
