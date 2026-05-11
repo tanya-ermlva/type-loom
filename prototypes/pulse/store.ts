@@ -138,6 +138,14 @@ export interface Composition {
   characterStagger: number;       // 0..0.5, per-character stagger window
   characterEffect: CharacterEffect;
   characterAmplitude: number;     // strength of the effect (px or degrees, depending on mode)
+  // Vertical auto-fit. When true, the text block is scaled to fit canvasHeight
+  // (minus 2 × autoFitPadding) and vertically centered. `lineHeight` and
+  // `interLineGap` are treated as a ratio between line and gap — both scale.
+  // Stack tile-fit (atoms tiling the stack canvas exactly) is gated by the
+  // same flag.
+  autoFitVertical: boolean;
+  /** 0..0.25, fraction of canvasHeight reserved as empty space (split top + bottom). */
+  autoFitPadding: number;
   // Debug
   showTokenBounds: boolean;
   showLineBounds: boolean;
@@ -197,6 +205,8 @@ export const DEFAULT_COMPOSITION: Composition = {
   characterStagger: 0.3,
   characterEffect: 'bow',
   characterAmplitude: 30,
+  autoFitVertical: true,
+  autoFitPadding: 0.05,
   showTokenBounds: false,
   showLineBounds: false,
   showCanvasGrid: false,
@@ -217,7 +227,7 @@ interface Store {
 }
 
 const STORAGE_KEY = 'pulse:state';
-const SCHEMA_VERSION = 4;
+const SCHEMA_VERSION = 5;
 
 export const useStore = create<Store>()(
   persist(
@@ -274,6 +284,19 @@ export const useStore = create<Store>()(
             composition: {
               ...DEFAULT_COMPOSITION,
               ...(preserved as Partial<Composition>),
+            },
+          };
+        }
+        if (version < 5) {
+          // v5: auto-fit vertical. Existing projects designed without auto-fit
+          // should preserve their look — default the toggle OFF for migrated
+          // states. New compositions (created post-v5) default ON.
+          const old = p?.composition ?? {};
+          p = {
+            composition: {
+              ...DEFAULT_COMPOSITION,
+              ...(old as Partial<Composition>),
+              autoFitVertical: false,
             },
           };
         }

@@ -5,6 +5,7 @@ import type { AlignmentMode, BgFillMode, CharacterEffect, CubicBezierCurve, Dire
 import { CurveEditor } from './CurveEditor';
 import { useExportContext } from './ExportContext';
 import { exportPngSequence } from './export';
+import { fitTextBlock } from './autoFit';
 import { ProjectSection } from '../shared/ProjectSection';
 
 const EASING_OPTIONS: EasingMode[] = [
@@ -160,6 +161,12 @@ function TypographySection() {
   const c = useStore((s) => s.composition);
   const update = useStore((s) => s.updateComposition);
 
+  // Effective values when auto-fit is on. Same math the Atom uses — so the
+  // displayed "raw → effective" matches what gets rendered to the canvas.
+  const fit = c.autoFitVertical
+    ? fitTextBlock(c.canvasHeight, c.lines.length, c.lineHeight, c.interLineGap, c.autoFitPadding)
+    : null;
+
   return (
     <Section title="Typography">
       <Slider label="Font size" value={c.fontSize} min={60} max={200} step={1}
@@ -167,9 +174,23 @@ function TypographySection() {
       <Slider label="Letter sp" value={c.letterSpacingPct} min={-5} max={5} step={0.1}
         onChange={(v) => update({ letterSpacingPct: v })} format={(v) => `${v.toFixed(1)}%`} />
       <Slider label="Line ht" value={c.lineHeight} min={60} max={200} step={0.5}
-        onChange={(v) => update({ lineHeight: v })} />
+        onChange={(v) => update({ lineHeight: v })}
+        dimmed={!!fit}
+        effective={fit ? fit.lineHeight.toFixed(1) : undefined} />
       <Slider label="Inter gap" value={c.interLineGap} min={-20} max={60} step={1}
-        onChange={(v) => update({ interLineGap: v })} />
+        onChange={(v) => update({ interLineGap: v })}
+        dimmed={!!fit}
+        effective={fit ? fit.interLineGap.toFixed(1) : undefined} />
+      <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, cursor: 'pointer', fontSize: 11 }}>
+        <input type="checkbox" checked={c.autoFitVertical}
+          onChange={(e) => update({ autoFitVertical: e.target.checked })} />
+        <span>Auto-fit vertical</span>
+      </label>
+      {c.autoFitVertical && (
+        <Slider label="Padding" value={c.autoFitPadding * 100} min={0} max={25} step={0.5}
+          onChange={(v) => update({ autoFitPadding: v / 100 })}
+          format={(v) => `${v.toFixed(1)}%`} />
+      )}
       <Slider label="Token sp" value={c.tokenSpacingTight} min={0} max={80} step={1}
         onChange={(v) => update({ tokenSpacingTight: v })} />
     </Section>
@@ -491,18 +512,23 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 
 function Slider({
   label, value, min, max, step = 1, onChange, format = (v) => v.toString(),
+  effective, dimmed = false,
 }: {
   label: string; value: number; min: number; max: number; step?: number;
   onChange: (v: number) => void; format?: (v: number) => string;
+  /** When present, shown after the raw value as "raw → effective" (e.g. auto-fit). */
+  effective?: string;
+  /** Reduces opacity to signal the slider is being overridden but still draggable. */
+  dimmed?: boolean;
 }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, opacity: dimmed ? 0.55 : 1 }}>
       <label style={{ width: 64, fontSize: 11, color: '#a1a1aa' }}>{label}</label>
       <input type="range" min={min} max={max} step={step} value={value}
         onChange={(e) => onChange(Number(e.target.value))}
         style={{ flex: 1 }} />
-      <span style={{ width: 50, textAlign: 'right', fontSize: 11, fontVariantNumeric: 'tabular-nums' }}>
-        {format(value)}
+      <span style={{ width: effective ? 100 : 50, textAlign: 'right', fontSize: 11, fontVariantNumeric: 'tabular-nums' }}>
+        {effective ? `${format(value)} → ${effective}` : format(value)}
       </span>
     </div>
   );

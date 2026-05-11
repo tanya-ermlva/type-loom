@@ -17,6 +17,7 @@ import { useStore as usePulseStore, ALIGNMENT_GROUPS, type AlignmentMode, type C
 import { CurveEditor } from '../pulse/CurveEditor';
 import { useExportContext } from '../pulse/ExportContext';
 import { exportPngSequence } from '../pulse/export';
+import { fitAtomsToStack } from '../pulse/autoFit';
 import { ProjectSection } from '../shared/ProjectSection';
 
 /** Renders all alignment modes as <optgroup>-grouped <option>s — same UI as Pulse. */
@@ -62,15 +63,33 @@ const CANVAS_PRESET_OPTIONS: { value: CanvasPreset; label: string }[] = [
  * Derive how many atoms tile inside the current stack canvas, given the live
  * Pulse atom aspect ratio. Same math as Stack App.tsx — kept inline here so
  * the Sidebar can show a live count + atom display dimensions.
+ *
+ * When `autoFitVertical` is on, atoms tile exactly (round + flex). When off,
+ * the old floor() behavior produces a partial clipped atom at the bottom.
  */
 function useDerivedAtomCount() {
   const baseComposition = usePulseStore((s) => s.composition);
   const stackCanvasWidth = useStore((s) => s.stackCanvasWidth);
   const stackCanvasHeight = useStore((s) => s.stackCanvasHeight);
   const aspect = baseComposition.canvasHeight / Math.max(1, baseComposition.canvasWidth);
-  const atomDisplayHeight = stackCanvasWidth * aspect;
-  const count = Math.max(1, Math.floor(stackCanvasHeight / Math.max(1, atomDisplayHeight)));
-  return { count, atomDisplayHeight, atomDisplayWidth: stackCanvasWidth };
+  const naturalAtomDisplayH = stackCanvasWidth * aspect;
+  if (baseComposition.autoFitVertical) {
+    const tile = fitAtomsToStack(stackCanvasWidth, stackCanvasHeight,
+                                 baseComposition.canvasWidth, baseComposition.canvasHeight);
+    return {
+      count: tile.atomCount,
+      atomDisplayHeight: tile.atomDisplayH,
+      atomDisplayWidth: stackCanvasWidth,
+      autoFitted: true,
+      cleanlyDivides: Math.abs(tile.atomDisplayH - naturalAtomDisplayH) < 0.5,
+    };
+  }
+  const count = Math.max(1, Math.floor(stackCanvasHeight / Math.max(1, naturalAtomDisplayH)));
+  return {
+    count, atomDisplayHeight: naturalAtomDisplayH, atomDisplayWidth: stackCanvasWidth,
+    autoFitted: false,
+    cleanlyDivides: Math.abs(stackCanvasHeight - count * naturalAtomDisplayH) < 0.5,
+  };
 }
 
 export function Sidebar() {
@@ -114,7 +133,10 @@ function CanvasSection() {
   const setCustomCanvas = useStore((s) => s.setCustomCanvas);
   const bgColor = useStore((s) => s.bgColor);
   const setBgColor = useStore((s) => s.setBgColor);
-  const { count, atomDisplayHeight } = useDerivedAtomCount();
+  const { count, atomDisplayHeight, autoFitted, cleanlyDivides } = useDerivedAtomCount();
+  const status = autoFitted
+    ? cleanlyDivides ? '' : ' · auto-fitted'
+    : cleanlyDivides ? '' : ' · last clipped';
 
   return (
     <Section title="Canvas">
@@ -138,7 +160,7 @@ function CanvasSection() {
         </p>
       )}
       <p style={{ fontSize: 11, color: '#a1a1aa', margin: '6px 0 0', fontFamily: 'ui-monospace, monospace' }}>
-        Atoms in stack: <b>{count}</b> &middot; each {stackCanvasWidth} × {Math.round(atomDisplayHeight)} px
+        Atoms in stack: <b>{count}</b>{status} &middot; each {stackCanvasWidth} × {Math.round(atomDisplayHeight)} px
       </p>
       <p style={{ fontSize: 10, color: '#71717a', lineHeight: 1.4, margin: '6px 0 0' }}>
         Atom width = canvas width (always fills). Atom height = canvas width × atom aspect from{' '}

@@ -13,6 +13,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import { layoutLine, type TokenPosition, type TokenWidth } from './layout';
 import { useTokenWidths, type TokenMetrics } from './tokens';
 import { characterEffect, easingFn, jitterFor, lerp, tokenProgress } from './animation';
+import { fitTextBlock } from './autoFit';
 import type { Composition, DirectionMode } from './store';
 
 interface AtomProps {
@@ -66,7 +67,7 @@ export function Atom({
     lines, canvasWidth, canvasHeight,
     bgColor, blockColor, textColor,
     fontFamily, fontSize, letterSpacingPct,
-    lineHeight, interLineGap, tokenSpacingTight,
+    lineHeight: rawLineHeight, interLineGap: rawInterLineGap, tokenSpacingTight,
     edgePadding, stateA, stateB, stateC, useStateC, bgBoundsModes,
     characterStaggerEnabled, characterStagger,
     characterEffect: charEffectMode, characterAmplitude,
@@ -74,9 +75,16 @@ export function Atom({
     loopDuration, direction, phaseOffset,
     perTokenStagger, perLineOffset, bgLag,
     jitterX, jitterY, jitterSeed,
+    autoFitVertical, autoFitPadding,
     trailsEnabled, trailCount, trailLagStep,
     showTokenBounds, showLineBounds, showCanvasGrid,
   } = composition;
+
+  // Apply vertical auto-fit (text block scaled + centered) when enabled.
+  // Raw slider values represent the line/gap ratio; both scale together.
+  const { lineHeight, interLineGap, topOffset } = autoFitVertical
+    ? fitTextBlock(canvasHeight, lines.length, rawLineHeight, rawInterLineGap, autoFitPadding)
+    : { lineHeight: rawLineHeight, interLineGap: rawInterLineGap, topOffset: 0 };
 
   const letterSpacingPx = (fontSize * letterSpacingPct) / 100;
   // Use parent-provided widths if available (Stack passes shared measurements);
@@ -251,7 +259,7 @@ export function Atom({
         if (row.positions.length === 0) return null;
         const bgX = Math.min(...row.bgPositions.map((p) => p.x));
         const bgRight = Math.max(...row.bgPositions.map((p) => p.x + p.width));
-        const bgY = li * (lineHeight + interLineGap);
+        const bgY = topOffset + li * (lineHeight + interLineGap);
         const baselineY = bgY + lineHeight * 0.8;
         const fillMode = bgBoundsModes?.[li] ?? 'continuous';
         return (

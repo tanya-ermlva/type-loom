@@ -15,8 +15,23 @@
  * to recall a coherent design. Each store stays single-tenant and unaware
  * of the project layer; this module is the only thing that knows the keys.
  */
-import { useStore as usePulseStore } from '../pulse/store';
+import { useStore as usePulseStore, type Composition } from '../pulse/store';
 import { useStore as useStackStore } from '../stack/store';
+
+/**
+ * Backfill defaults for fields that may be missing from older project snapshots.
+ * Legacy snapshots saved before the auto-fit feature won't have `autoFitVertical`
+ * / `autoFitPadding`; default the toggle OFF so the project's designed look is
+ * preserved exactly.
+ */
+function withLegacyDefaults(saved: unknown): Composition {
+  const s = (saved as Partial<Composition>) ?? {};
+  return {
+    ...(s as Composition),
+    autoFitVertical: s.autoFitVertical ?? false,
+    autoFitPadding: s.autoFitPadding ?? 0.05,
+  };
+}
 
 const PROJECTS_KEY = 'type-loom:projects';
 const ACTIVE_KEY = 'type-loom:active-project';
@@ -164,7 +179,7 @@ export function loadProject(id: string): boolean {
   // Partial setState merges → keeps actions, replaces persisted data fields.
   // (Zustand `setState(partial)` is shallow-merge.)
   if (proj.pulse?.composition) {
-    usePulseStore.setState({ composition: proj.pulse.composition as never });
+    usePulseStore.setState({ composition: withLegacyDefaults(proj.pulse.composition) as never });
   }
   if (proj.stack) {
     useStackStore.setState(proj.stack as never);

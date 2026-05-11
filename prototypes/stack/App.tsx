@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Atom } from '../pulse/Atom';
 import { PrototypeNav } from '../pulse/PrototypeNav';
 import { easingFn } from '../pulse/animation';
+import { fitAtomsToStack } from '../pulse/autoFit';
 import { useStore as usePulseStore, type Composition } from '../pulse/store';
 import { useTokenWidths } from '../pulse/tokens';
 import { useStore as useStackStore, SLOT_COUNT } from './store';
@@ -36,8 +37,21 @@ export default function App() {
   // canvas-space lengths (font size, gaps) shrink/grow with the display size.
   const canvas = { width: stackCanvasWidth, height: stackCanvasHeight };
   const atomAspect = baseComposition.canvasHeight / Math.max(1, baseComposition.canvasWidth);
-  const atomDisplayHeight = stackCanvasWidth * atomAspect;
-  const atomCount = Math.max(1, Math.floor(stackCanvasHeight / Math.max(1, atomDisplayHeight)));
+  // Tile-fit (gated by composition.autoFitVertical):
+  //   ON  → atoms tile the stack canvas exactly (round() count, atom canvasH
+  //         flexes so SVG viewBox aspect matches the slot aspect, no clipping).
+  //   OFF → original floor() behavior; partial atom at the bottom may clip,
+  //         which is the documented signal that manual mode is on.
+  const tile = baseComposition.autoFitVertical
+    ? fitAtomsToStack(stackCanvasWidth, stackCanvasHeight,
+                      baseComposition.canvasWidth, baseComposition.canvasHeight)
+    : {
+        atomCount: Math.max(1, Math.floor(stackCanvasHeight / Math.max(1, stackCanvasWidth * atomAspect))),
+        atomDisplayH: stackCanvasWidth * atomAspect,
+        adjustedAtomCanvasH: baseComposition.canvasHeight,
+      };
+  const atomDisplayHeight = tile.atomDisplayH;
+  const atomCount = tile.atomCount;
   // Effective atom loopDuration in Stack = scroll cycle / pulses per scroll.
   // Atoms in Stack ignore Pulse's loopDuration so the scroll rhythm is always clean.
   const atomLoopDurationInStack = Math.max(0.05, cycleDuration / Math.max(1, pulsesPerScroll));
@@ -77,6 +91,10 @@ export default function App() {
       // means a single shared widths-measurement covers them all (computed below).
       return {
         ...baseComposition,
+        // Match the atom's internal viewBox aspect to its rendered slot aspect
+        // so `preserveAspectRatio="xMidYMid meet"` doesn't letterbox. With
+        // auto-fit ON, adjustedAtomCanvasH may flex from the user's canvasHeight.
+        canvasHeight: tile.adjustedAtomCanvasH,
         blockColor: palette?.blockColor ?? baseComposition.blockColor,
         textColor: palette?.textColor ?? baseComposition.textColor,
         loopDuration: atomLoopDurationInStack,
@@ -87,7 +105,7 @@ export default function App() {
       };
     });
   }, [baseComposition, atomCount, atomPalette, atomAlignmentOverrides,
-      phaseMode, phaseStep, phaseSpread, atomLoopDurationInStack]);
+      phaseMode, phaseStep, phaseSpread, atomLoopDurationInStack, tile.adjustedAtomCanvasH]);
 
   // Measure widths ONCE for the shared lines/font params; pass to every atom so
   // cycle-wrap (slot composition swap) doesn't trigger a per-atom re-measure.
@@ -99,7 +117,11 @@ export default function App() {
   // atomDisplayHeight (px in stack-canvas space) is what drives slot positioning,
   // NOT the atom's own canvasHeight (which is in atom-canvas space — different units).
   // Slot count = enough to cover the canvas plus one for the scroll seam.
-  const slotCount = Math.ceil(canvas.height / Math.max(1, atomDisplayHeight)) + 1;
+  // With auto-fit ON + scroll OFF, atoms tile the canvas exactly, so we skip
+  // the extra seam slot that would otherwise render below the canvas.
+  const slotCount = baseComposition.autoFitVertical && !scrollEnabled
+    ? atomCount
+    : Math.ceil(canvas.height / Math.max(1, atomDisplayHeight)) + 1;
 
   // ----- Scroll-only RAF (paused during export; replaced by virtual time) -----
   const scrollTickRef = useRef(0);
