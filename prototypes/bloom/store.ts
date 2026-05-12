@@ -16,29 +16,10 @@
  */
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { EasingMode } from '../pulse/store';
 
 export type BlendMode =
   | 'normal' | 'multiply' | 'screen' | 'overlay'
   | 'difference' | 'lighten' | 'darken';
-
-/**
- * Per-circle transition config. Each circle interpolates A → B within its
- * own [start, end] sub-range of the bloom's growth value g ∈ [0..1].
- *
- *   start: the g value at which this circle BEGINS transitioning (pins to A below)
- *   end:   the g value at which this circle REACHES B (pins to B above)
- *   easing: the curve applied to the local progress (g remapped into [0,1] inside the range)
- *
- * Defaults [0, 1, linear] reproduce the simple linear lerp. Narrower ranges
- * = faster transitions ("speed"). Non-overlapping ranges = sequenced handoff
- * (e.g. small.end = big.start = 0.5 → small fully shrinks before big grows).
- */
-export interface CircleTransition {
-  start: number;
-  end: number;
-  easing: EasingMode;
-}
 
 /** One visual state of the bloom atom. State A and State B share this shape. */
 export interface BloomState {
@@ -70,10 +51,6 @@ interface Store {
   stateA: BloomState;
   stateB: BloomState;
 
-  // Per-circle transition shape — speed (via range width) + easing.
-  smallTransition: CircleTransition;
-  bigTransition: CircleTransition;
-
   // Actions.
   setPlaying: (v: boolean) => void;
   setCycleDuration: (v: number) => void;
@@ -82,8 +59,6 @@ interface Store {
   setBlendMode: (v: BlendMode) => void;
   updateStateA: (patch: Partial<BloomState>) => void;
   updateStateB: (patch: Partial<BloomState>) => void;
-  updateSmallTransition: (patch: Partial<CircleTransition>) => void;
-  updateBigTransition: (patch: Partial<CircleTransition>) => void;
   reset: () => void;
 }
 
@@ -108,12 +83,6 @@ const DEFAULT_B: BloomState = {
   bigOpacity: 1,
 };
 
-const DEFAULT_TRANSITION: CircleTransition = {
-  start: 0,
-  end: 1,
-  easing: 'linear',
-};
-
 const INITIAL = {
   playing: true,
   cycleDuration: 1.5,
@@ -122,8 +91,6 @@ const INITIAL = {
   blendMode: 'normal' as BlendMode,
   stateA: DEFAULT_A,
   stateB: DEFAULT_B,
-  smallTransition: DEFAULT_TRANSITION,
-  bigTransition: DEFAULT_TRANSITION,
 };
 
 export const useStore = create<Store>()(
@@ -155,24 +122,16 @@ export const useStore = create<Store>()(
         return { stateA: { ...s.stateA, ...patch }, stateB };
       }),
       updateStateB: (patch) => set((s) => ({ stateB: { ...s.stateB, ...patch } })),
-      updateSmallTransition: (patch) => set((s) => ({
-        smallTransition: { ...s.smallTransition, ...patch },
-      })),
-      updateBigTransition: (patch) => set((s) => ({
-        bigTransition: { ...s.bigTransition, ...patch },
-      })),
       reset: () => set({
         stateA: DEFAULT_A, stateB: DEFAULT_B,
-        smallTransition: DEFAULT_TRANSITION,
-        bigTransition: DEFAULT_TRANSITION,
         blendMode: 'normal', bgColor: '#FAFAFA',
       }),
     }),
     {
-      // v6 — added per-circle CircleTransition (start, end, easing) so the
-      // small and big circles can interpolate at their own speed and curve.
-      // Older shapes are harmless orphan entries.
-      name: 'bloom:state:v6',
+      // v7 — removed per-circle CircleTransition (start/end/easing) — both
+      // circles now just lerp linearly from State A to State B as the
+      // field strengthens. Older shapes are harmless orphan entries.
+      name: 'bloom:state:v7',
       version: 1,
       partialize: (s) => ({
         playing: s.playing,
@@ -182,8 +141,6 @@ export const useStore = create<Store>()(
         blendMode: s.blendMode,
         stateA: s.stateA,
         stateB: s.stateB,
-        smallTransition: s.smallTransition,
-        bigTransition: s.bigTransition,
       }),
     },
   ),

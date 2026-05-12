@@ -12,15 +12,11 @@
  * field-strength values down without owning RAF.
  */
 import { useEffect, useRef, useState } from 'react';
-import type { BloomState, BlendMode, CircleTransition } from './store';
-import { easings } from '../pulse/animation';
+import type { BloomState, BlendMode } from './store';
 
 interface Props {
   stateA: BloomState;
   stateB: BloomState;
-  /** Per-circle transition shape — speed (via range) + easing curve. */
-  smallTransition: CircleTransition;
-  bigTransition: CircleTransition;
   /** When true and gOverride is null, run the auto A↔B loop. */
   playing: boolean;
   cycleDuration: number;
@@ -58,29 +54,10 @@ function lerpColor(a: string, b: string, t: number): string {
   return rgbToHex(ar + (br - ar) * t, ag + (bg - ag) * t, ab + (bb - ab) * t);
 }
 
-const clamp01 = (n: number) => (n < 0 ? 0 : n > 1 ? 1 : n);
-
-/**
- * Map the bloom's overall g into ONE circle's progress 0..1.
- *
- *   g < start          → 0 (circle pinned to State A)
- *   start ≤ g ≤ end    → ease(localProgress)
- *   g > end            → 1 (circle pinned to State B)
- *
- * Degenerate case start ≥ end: instant flip at g >= start (mimics a step).
- */
-export function applyTransition(g: number, t: CircleTransition): number {
-  if (t.end <= t.start) return g >= t.start ? 1 : 0;
-  const local = clamp01((g - t.start) / (t.end - t.start));
-  if (t.easing === 'cubic-bezier') return local; // bezier needs a curve param we don't pipe here
-  const fn = easings[t.easing] ?? easings.linear;
-  return fn(local);
-}
-
 // ---------- Component ----------
 
 export function Atom({
-  stateA, stateB, smallTransition, bigTransition, playing, cycleDuration,
+  stateA, stateB, playing, cycleDuration,
   gOverride = null, blendMode = 'normal', bgColor = '#FAFAFA', size = 200,
 }: Props) {
   const [g, setG] = useState(0);
@@ -113,19 +90,13 @@ export function Atom({
   const cx = size / 2;
   const cy = size / 2;
 
-  // Each circle gets its own local progress through A → B: a [start, end]
-  // sub-range of g plus an easing curve. Outside that range the circle
-  // pins to A (below start) or B (above end).
-  const gSmall = applyTransition(g, smallTransition);
-  const gBig = applyTransition(g, bigTransition);
+  const smallR = lerp(stateA.smallRadius, stateB.smallRadius, g);
+  const smallColor = lerpColor(stateA.smallColor, stateB.smallColor, g);
+  const smallOpacity = lerp(stateA.smallOpacity, stateB.smallOpacity, g);
 
-  const smallR = lerp(stateA.smallRadius, stateB.smallRadius, gSmall);
-  const smallColor = lerpColor(stateA.smallColor, stateB.smallColor, gSmall);
-  const smallOpacity = lerp(stateA.smallOpacity, stateB.smallOpacity, gSmall);
-
-  const bigR = lerp(stateA.bigRadius, stateB.bigRadius, gBig);
-  const bigColor = lerpColor(stateA.bigColor, stateB.bigColor, gBig);
-  const bigOpacity = lerp(stateA.bigOpacity, stateB.bigOpacity, gBig);
+  const bigR = lerp(stateA.bigRadius, stateB.bigRadius, g);
+  const bigColor = lerpColor(stateA.bigColor, stateB.bigColor, g);
+  const bigOpacity = lerp(stateA.bigOpacity, stateB.bigOpacity, g);
 
   return (
     <svg

@@ -5,8 +5,7 @@
  */
 import type { CSSProperties, ReactNode } from 'react';
 import { useStore } from './store';
-import type { BlendMode, CircleTransition } from './store';
-import type { EasingMode } from '../pulse/store';
+import type { BlendMode } from './store';
 
 const BLEND_MODES: BlendMode[] = [
   'normal', 'multiply', 'screen', 'overlay',
@@ -23,90 +22,8 @@ export function Sidebar() {
       <CanvasSection />
       <StateSection which="A" />
       <StateSection which="B" />
-      <TransitionSection />
       <ResetSection />
     </aside>
-  );
-}
-
-const EASING_OPTIONS: Exclude<EasingMode, 'cubic-bezier'>[] = [
-  'linear',
-  'easeInSine',    'easeOutSine',    'easeInOutSine',
-  'easeInQuad',    'easeOutQuad',    'easeInOutQuad',
-  'easeInCubic',   'easeOutCubic',   'easeInOutCubic',
-  'easeInQuart',   'easeOutQuart',   'easeInOutQuart',
-  'easeInQuint',   'easeOutQuint',   'easeInOutQuint',
-  'easeInExpo',    'easeOutExpo',    'easeInOutExpo',
-  'easeInCirc',    'easeOutCirc',    'easeInOutCirc',
-  'easeInBack',    'easeOutBack',    'easeInOutBack',
-  'easeInElastic', 'easeOutElastic', 'easeInOutElastic',
-  'easeInBounce',  'easeOutBounce',  'easeInOutBounce',
-];
-
-/**
- * Transition section — per-circle [start, end] sub-range of the bloom's g
- * plus an easing curve. Narrow ranges = fast transitions; non-overlapping
- * ranges = sequenced handoff (small fully shrinks before big grows).
- *
- * Exported so the bloom-stack sidebar can reuse the exact same widget —
- * atom config is shared between the two views.
- */
-export function TransitionSection() {
-  const smallTransition = useStore((s) => s.smallTransition);
-  const bigTransition = useStore((s) => s.bigTransition);
-  const updateSmall = useStore((s) => s.updateSmallTransition);
-  const updateBig = useStore((s) => s.updateBigTransition);
-
-  return (
-    <Section title="Transition" subtitle="speed + easing per circle">
-      <CircleTransitionControls
-        label="Small · on top"
-        transition={smallTransition}
-        update={updateSmall}
-      />
-      <CircleTransitionControls
-        label="Big · behind"
-        transition={bigTransition}
-        update={updateBig}
-      />
-      <p style={{ fontSize: 10, color: '#71717a', lineHeight: 1.4, margin: '6px 0 0' }}>
-        Each circle interpolates A → B inside its own [Start, End] window
-        of the bloom's g. Narrower window = faster. Set Small End = Big
-        Start (e.g. both 0.5) for a clean sequential handoff.
-      </p>
-    </Section>
-  );
-}
-
-function CircleTransitionControls({ label, transition, update }: {
-  label: string;
-  transition: CircleTransition;
-  update: (patch: Partial<CircleTransition>) => void;
-}) {
-  // Keep start ≤ end automatically — the renderer treats start ≥ end as a
-  // step function, which is rarely what the user wants when dragging.
-  const onStartChange = (v: number) => {
-    update({ start: v, end: Math.max(v, transition.end) });
-  };
-  const onEndChange = (v: number) => {
-    update({ end: v, start: Math.min(v, transition.start) });
-  };
-
-  return (
-    <>
-      <SubLabel>{label}</SubLabel>
-      <Slider label="Start" value={transition.start} min={0} max={1} step={0.01}
-        onChange={onStartChange} format={(v) => v.toFixed(2)} />
-      <Slider label="End" value={transition.end} min={0} max={1} step={0.01}
-        onChange={onEndChange} format={(v) => v.toFixed(2)} />
-      <Field label="Easing">
-        <select value={transition.easing}
-          onChange={(e) => update({ easing: e.target.value as EasingMode })}
-          style={selectStyle}>
-          {EASING_OPTIONS.map((m) => <option key={m} value={m}>{m}</option>)}
-        </select>
-      </Field>
-    </>
   );
 }
 

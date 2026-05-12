@@ -17,9 +17,9 @@ import { useEffect, useRef, useState } from 'react';
 import { useStore as useStackStore } from './store';
 import type { FalloffKind } from './store';
 import { useStore as useBloomStore } from '../bloom/store';
-import { applyTransition } from '../bloom/Atom';
 import { getComposition } from '../bloom/compositions';
 import { PrototypeNav } from '../bloom/PrototypeNav';
+import { ExportContext } from './ExportContext';
 
 // ---------- Color + numeric helpers (mirrors prototypes/bloom/Atom.tsx) ----------
 
@@ -43,6 +43,18 @@ function lerpColor(a: string, b: string, t: number): string {
   const [ar, ag, ab] = hexToRgb(a);
   const [br, bg, bb] = hexToRgb(b);
   return rgbToHex(ar + (br - ar) * t, ag + (bg - ag) * t, ab + (bb - ab) * t);
+}
+
+/**
+ * Deterministic per-atom pseudo-random in [0, 1]. The output for a given
+ * `seed` is stable across renders, so each atom keeps the same variance
+ * direction (the dot 5 in the F always biases bigger, dot 7 always smaller,
+ * etc.) — important for the visual identity to feel consistent rather than
+ * a random buzz every frame.
+ */
+function atomRand(seed: number): number {
+  const v = Math.sin(seed * 12.9898 + 78.233) * 43758.5453;
+  return v - Math.floor(v);
 }
 
 /**
@@ -101,23 +113,23 @@ function fieldStrength(
 export default function App() {
   const stateA = useBloomStore((s) => s.stateA);
   const stateB = useBloomStore((s) => s.stateB);
-  const smallTransition = useBloomStore((s) => s.smallTransition);
-  const bigTransition = useBloomStore((s) => s.bigTransition);
   const blendMode = useBloomStore((s) => s.blendMode);
   const bgColor = useBloomStore((s) => s.bgColor);
 
   const compositionId = useStackStore((s) => s.composition);
-  // Per-composition snapshot — reach + gap that follow the active layout.
+  // Per-composition snapshot — reach + gap + (for generative comps) seed + count.
   const snapshot = useStackStore((s) => s.snapshots[s.composition]);
-  const compositionGap = snapshot.compositionGap;
-  const reachX = snapshot.reachX;
-  const reachY = snapshot.reachY;
+  const { compositionGap, reachX, reachY, seed, count } = snapshot;
   const fieldFalloff = useStackStore((s) => s.fieldFalloff);
+  const cursorMode = useStackStore((s) => s.cursorMode);
+  const autoplay = useStackStore((s) => s.autoplay);
+  const fields = useStackStore((s) => s.fields);
+  const smallVariance = useStackStore((s) => s.smallVariance);
   const letterOverrides = useStackStore((s) => s.letterOverrides);
 
-  // Resolve the composition each render — cheap. Gap reshapes the viewBox
-  // and the position list together (see prototypes/bloom/compositions.ts).
-  const composition = getComposition(compositionId, compositionGap);
+  // Resolve the composition each render. For generative layouts, the seed
+  // and count feed the position generator; DFD layouts ignore them.
+  const composition = getComposition(compositionId, compositionGap, seed, count);
 
   // Buffer zone around the content so the cursor can travel past atoms near
   // the edge and let their bloom finish, instead of snapping back to rest the
@@ -139,7 +151,9 @@ export default function App() {
   const [mouse, setMouse] = useState<{ x: number; y: number } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
 
+  // Hover mode: cursor follows the mouse globally.
   useEffect(() => {
+    if (cursorMode !== 'hover') return;
     const onMove = (e: MouseEvent) => {
       const svg = svgRef.current;
       if (!svg) return;
@@ -154,9 +168,6 @@ export default function App() {
       const local = pt.matrixTransform(ctm.inverse());
       setMouse({ x: local.x, y: local.y });
     };
-    // mouseleave on document fires when the cursor exits the browser
-    // viewport entirely (or the tab loses focus); we drop the cursor then
-    // so atoms relax to State A.
     const onDocLeave = () => setMouse(null);
     window.addEventListener('mousemove', onMove);
     document.addEventListener('mouseleave', onDocLeave);
@@ -164,7 +175,38 @@ export default function App() {
       window.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseleave', onDocLeave);
     };
-  }, []);
+  }, [cursorMode]);
+
+  // Autoplay mode: the cursor pings between Anchor A and Anchor B on a sin
+  // weight curve. Same model as prototypes/compress's force-centre target —
+  // sin(π·progress) goes 0 → 1 → 0 over one cycle, so A → B → A loops back
+  // seamlessly without a discontinuity at the seam.
+  useEffect(() => {
+    if (cursorMode !== 'autoplay') return;
+    let raf = 0;
+    const start = performance.now();
+    const tick = () => {
+      const elapsed = (performance.now() - start) / 1000;
+      const cyc = Math.max(0.1, autoplay.loopDuration);
+      const t = (elapsed % cyc) / cyc;       // 0..1 phase
+      const w = Math.sin(Math.PI * t);       // 0 → 1 → 0 weight
+      // Anchors are %-of-viewBox so they map naturally across compositions.
+      const x = (autoplay.anchorAX + (autoplay.anchorBX - autoplay.anchorAX) * w)
+              * composition.viewBox.width;
+      const y = (autoplay.anchorAY + (autoplay.anchorBY - autoplay.anchorAY) * w)
+              * composition.viewBox.height;
+      setMouse({ x, y });
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [
+    cursorMode,
+    autoplay.loopDuration,
+    autoplay.anchorAX, autoplay.anchorAY,
+    autoplay.anchorBX, autoplay.anchorBY,
+    composition.viewBox.width, composition.viewBox.height,
+  ]);
 
   return (
     <div style={{
@@ -195,12 +237,24 @@ export default function App() {
         >
           <g style={{ mixBlendMode: blendMode as React.CSSProperties['mixBlendMode'] }}>
             {composition.positions.map((p, i) => {
-              // Per-atom growth value from the cursor's elliptical field.
-              // Reach X / Reach Y can differ → stretches the ellipse into a
-              // horizontal or vertical band without any directional flag.
-              const g = mouse
-                ? fieldStrength(p.cx, p.cy, mouse.x, mouse.y, reachX, reachY, fieldFalloff)
-                : 0;
+              // Per-atom growth value depends on the cursor mode.
+              //   hover / autoplay → single field at the cursor position
+              //   fields           → MAX field-strength across all placed fields
+              let g = 0;
+              if (cursorMode === 'fields') {
+                for (const f of fields) {
+                  const fcx = f.cxPct * composition.viewBox.width;
+                  const fcy = f.cyPct * composition.viewBox.height;
+                  const s = fieldStrength(
+                    p.cx, p.cy, fcx, fcy, f.reachX, f.reachY, fieldFalloff,
+                  );
+                  if (s > g) g = s;
+                }
+              } else if (mouse) {
+                g = fieldStrength(
+                  p.cx, p.cy, mouse.x, mouse.y, reachX, reachY, fieldFalloff,
+                );
+              }
 
               // Per-letter colour override resolution: a non-null override
               // replaces BOTH State A and State B's colour for that letter,
@@ -212,18 +266,18 @@ export default function App() {
               const bigColorA = override.bigColor ?? stateA.bigColor;
               const bigColorB = override.bigColor ?? stateB.bigColor;
 
-              // Per-circle remap + ease: each circle gets its own progress
-              // through A → B based on its [start, end, easing] config.
-              const gSmall = applyTransition(g, smallTransition);
-              const gBig = applyTransition(g, bigTransition);
+              // Per-atom variance multiplier on small radius — deterministic
+              // per atom index so the same dot always biases the same way.
+              // Range: [1 - smallVariance, 1 + smallVariance].
+              const smallJitter = 1 + smallVariance * (atomRand(i) * 2 - 1);
+              const smallRBase = lerp(stateA.smallRadius, stateB.smallRadius, g);
+              const smallR = smallRBase * smallJitter;
+              const smallColor = lerpColor(smallColorA, smallColorB, g);
+              const smallOpacity = lerp(stateA.smallOpacity, stateB.smallOpacity, g);
 
-              const smallR = lerp(stateA.smallRadius, stateB.smallRadius, gSmall);
-              const smallColor = lerpColor(smallColorA, smallColorB, gSmall);
-              const smallOpacity = lerp(stateA.smallOpacity, stateB.smallOpacity, gSmall);
-
-              const bigR = lerp(stateA.bigRadius, stateB.bigRadius, gBig);
-              const bigColor = lerpColor(bigColorA, bigColorB, gBig);
-              const bigOpacity = lerp(stateA.bigOpacity, stateB.bigOpacity, gBig);
+              const bigR = lerp(stateA.bigRadius, stateB.bigRadius, g);
+              const bigColor = lerpColor(bigColorA, bigColorB, g);
+              const bigOpacity = lerp(stateA.bigOpacity, stateB.bigOpacity, g);
 
               return (
                 <g key={i}>
@@ -245,12 +299,32 @@ export default function App() {
               );
             })}
           </g>
+
+          {/* Field position indicators — only when cursorMode is 'fields'.
+              A faint outlined ellipse + crosshair shows each field's reach
+              and centre, so the user can see what's contributing where.
+              Sits OUTSIDE the blend-mode group so blending doesn't tint it. */}
+          {cursorMode === 'fields' && fields.map((f) => {
+            const fcx = f.cxPct * composition.viewBox.width;
+            const fcy = f.cyPct * composition.viewBox.height;
+            return (
+              <g key={`fi_${f.id}`} pointerEvents="none">
+                <ellipse cx={fcx} cy={fcy} rx={f.reachX} ry={f.reachY}
+                  fill="none" stroke="#60a5fa" strokeWidth="1.5"
+                  strokeDasharray="6 8" opacity="0.55" />
+                <circle cx={fcx} cy={fcy} r="4" fill="#60a5fa" />
+              </g>
+            );
+          })}
         </svg>
       </div>
 
       {/* Sidebar imported from a sibling file to keep this one focused on
-          the composition + interaction logic. */}
-      <SidebarLazy />
+          the composition + interaction logic. The export context lets the
+          sidebar's "Export PNG" button grab the live SVG without a global. */}
+      <ExportContext.Provider value={{ getSvg: () => svgRef.current }}>
+        <SidebarLazy />
+      </ExportContext.Provider>
     </div>
   );
 }

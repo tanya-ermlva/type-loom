@@ -4,16 +4,19 @@
  * the bloom atom sidebar. The reuse means tweaking a state in either route
  * updates the same shared atom store, so the look stays consistent.
  */
-import type { CSSProperties } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { useStore as useStackStore } from './store';
 import { useStore as useBloomStore } from '../bloom/store';
+import { useExportSvg } from './ExportContext';
+import { exportSvgAsPng } from './export';
 import {
-  Section, Slider, Field, ColorRow, StateSection, TransitionSection, selectStyle,
+  Section, Slider, SubLabel, Field, ColorRow,
+  StateSection, selectStyle,
 } from '../bloom/Sidebar';
 import type { BlendMode } from '../bloom/store';
-import type { FalloffKind } from './store';
+import type { FalloffKind, CursorMode } from './store';
 import {
-  COMPOSITION_IDS, getComposition, getCompositionMeta, type CompositionId,
+  COMPOSITION_GROUPS, getComposition, getCompositionMeta, type CompositionId,
 } from '../bloom/compositions';
 import type { Letter } from '../bloom/positions';
 
@@ -37,12 +40,13 @@ export function Sidebar() {
       background: '#18181b', color: '#e4e4e7', overflowY: 'auto', fontSize: 12,
     }}>
       <CompositionSection />
-      <HoverSection />
+      <FieldSection />
       <CanvasSection />
       <StateSection which="A" />
       <StateSection which="B" />
-      <TransitionSection />
+      <VariationSection />
       <LetterPalettesSection />
+      <ExportSection />
       <ResetSection />
     </aside>
   );
@@ -52,16 +56,20 @@ export function Sidebar() {
 
 function CompositionSection() {
   const composition = useStackStore((s) => s.composition);
-  const compositionGap = useStackStore((s) => s.snapshots[s.composition].compositionGap);
+  const snapshot = useStackStore((s) => s.snapshots[s.composition]);
   const setComposition = useStackStore((s) => s.setComposition);
   const setCompositionGap = useStackStore((s) => s.setCompositionGap);
+  const setCount = useStackStore((s) => s.setCount);
+  const regenerateSeed = useStackStore((s) => s.regenerateSeed);
 
   const meta = getCompositionMeta(composition);
-  const active = getComposition(composition, compositionGap);
+  const active = getComposition(
+    composition, snapshot.compositionGap, snapshot.seed, snapshot.count,
+  );
 
   // Switching composition just changes which snapshot is active — the
-  // store keeps per-layout reach + gap, so the user's tuning is preserved
-  // when they come back to a layout they've already visited.
+  // store keeps per-layout reach + gap + seed + count, so the user's
+  // tuning is preserved when they come back to a layout already visited.
   const onChange = (id: CompositionId) => {
     setComposition(id);
   };
@@ -77,31 +85,51 @@ function CompositionSection() {
         <select value={composition}
           onChange={(e) => onChange(e.target.value as CompositionId)}
           style={selectStyle}>
-          {COMPOSITION_IDS.map((id) => {
-            const m = getCompositionMeta(id);
-            return <option key={id} value={id}>{m.label}</option>;
-          })}
+          {COMPOSITION_GROUPS.map((group) => (
+            <optgroup key={group.label} label={group.label}>
+              {group.ids.map((id) => {
+                const m = getCompositionMeta(id);
+                return <option key={id} value={id}>{m.label}</option>;
+              })}
+            </optgroup>
+          ))}
         </select>
       </Field>
       {meta.usesGap && (
         <Slider
           label={composition === 'triple-stack' ? 'Stack gap' : 'Grid gap'}
-          value={compositionGap} min={0} max={gapMax} step={10}
+          value={snapshot.compositionGap} min={0} max={gapMax} step={10}
           onChange={setCompositionGap}
           format={(v) => `${Math.round(v)}u`} />
       )}
+      {meta.usesCount && (
+        <Slider label="Count" value={snapshot.count} min={4} max={400} step={1}
+          onChange={setCount} format={(v) => `${Math.round(v)}`} />
+      )}
+      {meta.usesSeed && (
+        <button
+          onClick={regenerateSeed}
+          style={{
+            width: '100%', padding: '6px', marginTop: 6, marginBottom: 4,
+            background: '#27272a', color: '#e4e4e7',
+            border: 0, borderRadius: 4, cursor: 'pointer', fontSize: 11,
+          }}
+        >↻ Regenerate</button>
+      )}
       <p style={{ fontSize: 10, color: '#71717a', lineHeight: 1.4, margin: '4px 0 0' }}>
-        Gap is empty space between adjacent DFD content boxes. 0 = boxes
-        touch (tight); higher = more breathing room. Bigger gaps grow the
-        canvas; the SVG scales to fit so atoms appear smaller on screen.
+        {meta.usesGap
+          ? 'Gap is empty space between adjacent DFD content boxes. 0 = boxes touch (tight); higher = more breathing room.'
+          : meta.usesSeed
+            ? 'Atoms positioned by a deterministic seed. Click Regenerate for a new layout; the same seed always produces the same positions.'
+            : 'Atoms positioned from the DFD wireframe.'}
       </p>
     </Section>
   );
 }
 
-function HoverSection() {
-  // Reach values follow the active composition via its snapshot, so the
-  // user's tuning per layout is preserved when switching back and forth.
+function FieldSection() {
+  const cursorMode = useStackStore((s) => s.cursorMode);
+  const setCursorMode = useStackStore((s) => s.setCursorMode);
   const reachX = useStackStore((s) => s.snapshots[s.composition].reachX);
   const reachY = useStackStore((s) => s.snapshots[s.composition].reachY);
   const fieldFalloff = useStackStore((s) => s.fieldFalloff);
@@ -109,13 +137,24 @@ function HoverSection() {
   const setReachY = useStackStore((s) => s.setReachY);
   const setFieldFalloff = useStackStore((s) => s.setFieldFalloff);
 
+  const isFields = cursorMode === 'fields';
+
   return (
-    <Section title="Hover field" subtitle="cursor is an elliptical force field">
-      <Slider label="Reach X" value={reachX} min={50} max={1500} step={10}
-        onChange={setReachX} format={(v) => `${Math.round(v)}u`} />
-      <Slider label="Reach Y" value={reachY} min={50} max={1500} step={10}
-        onChange={setReachY} format={(v) => `${Math.round(v)}u`} />
-      <Field label="Falloff">
+    <Section title="Field" subtitle={
+      isFields ? 'multiple static fields'
+        : cursorMode === 'autoplay' ? 'cursor pings between two anchors'
+          : 'cursor is an elliptical force field'
+    }>
+      <ModeToggle mode={cursorMode} onChange={setCursorMode} />
+      {!isFields && (
+        <>
+          <Slider label="Reach X" value={reachX} min={50} max={3000} step={10}
+            onChange={setReachX} format={(v) => `${Math.round(v)}u`} />
+          <Slider label="Reach Y" value={reachY} min={50} max={3000} step={10}
+            onChange={setReachY} format={(v) => `${Math.round(v)}u`} />
+        </>
+      )}
+      <Field label={isFields ? 'Falloff (all fields)' : 'Falloff'}>
         <select value={fieldFalloff}
           onChange={(e) => setFieldFalloff(e.target.value as FalloffKind)}
           style={selectStyle}>
@@ -124,12 +163,133 @@ function HoverSection() {
           ))}
         </select>
       </Field>
+      {cursorMode === 'autoplay' && <AutoplayControls />}
+      {isFields && <FieldsList />}
       <p style={{ fontSize: 10, color: '#71717a', lineHeight: 1.4, margin: '6px 0 0' }}>
-        Atoms read field strength at their position: full bloom at the cursor,
-        zero past the ellipse edge. Reach X ≠ Reach Y stretches the field
-        into a horizontal or vertical band.
+        {cursorMode === 'hover'
+          ? 'Atoms read field strength at their position; the cursor is the field centre. Move your mouse to drive the bloom.'
+          : cursorMode === 'autoplay'
+            ? 'Cursor sweeps between Anchor A and Anchor B over the loop.'
+            : 'Each field is an elliptical attractor; atoms take the MAX field strength across all placed fields. Falloff is shared.'}
       </p>
     </Section>
+  );
+}
+
+function ModeToggle({ mode, onChange }: {
+  mode: CursorMode;
+  onChange: (v: CursorMode) => void;
+}) {
+  const btn = (m: CursorMode): CSSProperties => ({
+    flex: 1, padding: '6px 8px', fontSize: 11, fontWeight: 500,
+    background: mode === m ? '#1e293b' : '#27272a',
+    color: mode === m ? '#60a5fa' : '#a1a1aa',
+    border: 0, borderRadius: 4, cursor: 'pointer',
+  });
+  return (
+    <div style={{ display: 'flex', gap: 4, marginBottom: 10 }}>
+      <button style={btn('hover')} onClick={() => onChange('hover')}>Hover</button>
+      <button style={btn('autoplay')} onClick={() => onChange('autoplay')}>Autoplay</button>
+      <button style={btn('fields')} onClick={() => onChange('fields')}>Fields</button>
+    </div>
+  );
+}
+
+function FieldsList() {
+  const fields = useStackStore((s) => s.fields);
+  const addField = useStackStore((s) => s.addField);
+
+  return (
+    <div style={{ marginTop: 6, marginBottom: 4 }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        marginBottom: 8,
+      }}>
+        <span style={{ fontSize: 11, color: '#a1a1aa' }}>
+          {fields.length} field{fields.length === 1 ? '' : 's'}
+        </span>
+        <button
+          onClick={addField}
+          style={{
+            padding: '3px 8px', fontSize: 11,
+            background: '#1e293b', color: '#60a5fa',
+            border: 0, borderRadius: 3, cursor: 'pointer',
+          }}
+        >+ Add field</button>
+      </div>
+      {fields.map((f, i) => (
+        <FieldRow key={f.id} index={i} id={f.id} />
+      ))}
+    </div>
+  );
+}
+
+function FieldRow({ index, id }: { index: number; id: string }) {
+  const field = useStackStore((s) => s.fields.find((f) => f.id === id));
+  const updateField = useStackStore((s) => s.updateField);
+  const removeField = useStackStore((s) => s.removeField);
+  if (!field) return null;
+
+  return (
+    <div style={{
+      padding: '8px',
+      marginBottom: 6,
+      background: '#0a0a0a',
+      border: '1px solid #27272a',
+      borderRadius: 4,
+    }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6,
+      }}>
+        <span style={{ fontSize: 11, fontWeight: 600 }}>Field {index + 1}</span>
+        <button
+          onClick={() => removeField(id)}
+          title="remove this field"
+          style={{
+            marginLeft: 'auto', width: 22, height: 22, padding: 0,
+            fontSize: 12, lineHeight: 1,
+            background: '#27272a', color: '#f87171',
+            border: 0, borderRadius: 3, cursor: 'pointer',
+          }}
+        >×</button>
+      </div>
+      <Slider label="X %" value={field.cxPct} min={0} max={1} step={0.01}
+        onChange={(v) => updateField(id, { cxPct: v })}
+        format={(v) => `${Math.round(v * 100)}%`} />
+      <Slider label="Y %" value={field.cyPct} min={0} max={1} step={0.01}
+        onChange={(v) => updateField(id, { cyPct: v })}
+        format={(v) => `${Math.round(v * 100)}%`} />
+      <Slider label="Reach X" value={field.reachX} min={50} max={3000} step={10}
+        onChange={(v) => updateField(id, { reachX: v })}
+        format={(v) => `${Math.round(v)}u`} />
+      <Slider label="Reach Y" value={field.reachY} min={50} max={3000} step={10}
+        onChange={(v) => updateField(id, { reachY: v })}
+        format={(v) => `${Math.round(v)}u`} />
+    </div>
+  );
+}
+
+function AutoplayControls() {
+  const autoplay = useStackStore((s) => s.autoplay);
+  const update = useStackStore((s) => s.updateAutoplay);
+  // Anchors are stored as 0..1 percentages of viewBox; UI displays 0..100.
+  const pct = (v: number) => `${Math.round(v * 100)}%`;
+
+  return (
+    <>
+      <Slider label="Loop dur" value={autoplay.loopDuration} min={0.5} max={20} step={0.1}
+        onChange={(v) => update({ loopDuration: v })} format={(v) => `${v.toFixed(1)}s`} />
+      <SubLabel>Anchor A · start</SubLabel>
+      <Slider label="X %" value={autoplay.anchorAX} min={0} max={1} step={0.01}
+        onChange={(v) => update({ anchorAX: v })} format={pct} />
+      <Slider label="Y %" value={autoplay.anchorAY} min={0} max={1} step={0.01}
+        onChange={(v) => update({ anchorAY: v })} format={pct} />
+      <SubLabel>Anchor B · target</SubLabel>
+      <Slider label="X %" value={autoplay.anchorBX} min={0} max={1} step={0.01}
+        onChange={(v) => update({ anchorBX: v })} format={pct} />
+      <Slider label="Y %" value={autoplay.anchorBY} min={0} max={1} step={0.01}
+        onChange={(v) => update({ anchorBY: v })} format={pct} />
+    </>
   );
 }
 
@@ -301,6 +461,68 @@ const microBtnStyle: CSSProperties = {
   border: 0,
   borderRadius: 3,
 };
+
+function VariationSection() {
+  const smallVariance = useStackStore((s) => s.smallVariance);
+  const setSmallVariance = useStackStore((s) => s.setSmallVariance);
+
+  return (
+    <Section title="Variation" subtitle="per-atom size jitter">
+      <Slider label="Small variance" value={smallVariance} min={0} max={1} step={0.01}
+        onChange={setSmallVariance}
+        format={(v) => `±${Math.round(v * 100)}%`} />
+      <p style={{ fontSize: 10, color: '#71717a', lineHeight: 1.4, margin: '6px 0 0' }}>
+        Multiplies each atom's small radius by a stable per-atom factor in
+        [1 − variance, 1 + variance]. 0 = uniform. Higher = more organic
+        size variety while still responding to proximity.
+      </p>
+    </Section>
+  );
+}
+
+function ExportSection() {
+  const composition = useStackStore((s) => s.composition);
+  const { getSvg } = useExportSvg();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const onExport = async () => {
+    const svg = getSvg();
+    if (!svg) { setError('SVG not ready'); return; }
+    setError(null);
+    setBusy(true);
+    try {
+      await exportSvgAsPng(svg, composition);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Section title="Export">
+      <button
+        onClick={onExport}
+        disabled={busy}
+        style={{
+          width: '100%', padding: '6px',
+          background: busy ? '#27272a' : '#1e293b',
+          color: busy ? '#71717a' : '#60a5fa',
+          border: 0, borderRadius: 4, cursor: busy ? 'wait' : 'pointer',
+        }}
+      >{busy ? 'Rendering…' : 'Export PNG (current frame)'}</button>
+      {error && (
+        <p style={{ fontSize: 10, color: '#f87171', marginTop: 6, marginBottom: 0 }}>
+          Export failed: {error}
+        </p>
+      )}
+      <p style={{ fontSize: 10, color: '#71717a', lineHeight: 1.4, margin: '6px 0 0' }}>
+        Captures the current frame at the composition's viewBox resolution.
+      </p>
+    </Section>
+  );
+}
 
 function ResetSection() {
   const resetStack = useStackStore((s) => s.reset);
